@@ -1,0 +1,358 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevOps Estimation & Cycle Time Analysis</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            azure: {
+              50: '#f0f6ff',
+              100: '#e0edff',
+              500: '#0078d4',
+              600: '#0062b1',
+              700: '#004e8c',
+              800: '#003865',
+              900: '#002544',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Chart.js & Chart.js BoxPlot Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4.3.0/build/index.umd.min.js"></script>
+
+  <!-- Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden antialiased">
+
+  <!-- JINJA2 DATA INJECTION BLOCK 
+       When rendering from Python/Jinja2, pass JSON strings to {{ cards_json | default('null') | safe }}
+  -->
+  <script type="application/json" id="devops-data-injected">
+    {{ cards_json | default('null') | safe }}
+  </script>
+
+  <!-- Dashboard Header -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-azure-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-azure-500/20">
+            <i class="fa-solid fa-chart-line-down text-lg"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-azure-400 bg-azure-500/10 px-2 py-0.5 rounded border border-azure-500/20">DevOps Intelligence</span>
+              <span class="text-xs text-slate-400"><i class="fa-solid fa-calendar-week mr-1"></i> Weekend Excluded Active Business Days</span>
+            </div>
+            <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+              Story Points vs. Active Time Correlation Analysis
+            </h1>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Jinja Indicator Badge -->
+          <span id="jinja-status-badge" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+            <i class="fa-solid fa-database"></i> <span id="jinja-status-text">Using Mock Dataset</span>
+          </span>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- KPI Summary Row -->
+    <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div class="bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 flex flex-col justify-between">
+        <span class="text-slate-400 text-xs font-medium">Closed Items Analyzed</span>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span id="kpi-total-items" class="text-2xl font-bold text-slate-100 mono">0</span>
+          <span class="text-[11px] text-slate-400">Items</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 flex flex-col justify-between">
+        <span class="text-slate-400 text-xs font-medium">Total Points Delivered</span>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span id="kpi-total-points" class="text-2xl font-bold text-azure-400 mono">0</span>
+          <span class="text-[11px] text-azure-400/80">Story Points</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 flex flex-col justify-between">
+        <span class="text-slate-400 text-xs font-medium">Avg Cycle Time (Business Days)</span>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span id="kpi-avg-days" class="text-2xl font-bold text-sky-400 mono">0.0</span>
+          <span class="text-[11px] text-slate-400">Days / Item</span>
+        </div>
+      </div>
+
+      <div id="kpi-corr-card" class="bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 flex flex-col justify-between transition">
+        <span class="text-slate-400 text-xs font-medium">Pearson Correlation (r)</span>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span id="kpi-corr-r" class="text-2xl font-bold text-emerald-400 mono">0.00</span>
+          <span id="kpi-corr-strength" class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">Calculating</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 rounded-xl p-3.5 border border-rose-900/40 bg-rose-950/10 flex flex-col justify-between">
+        <span class="text-rose-300 text-xs font-medium">Outliers Detected</span>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span id="kpi-outliers" class="text-2xl font-bold text-rose-400 mono">0</span>
+          <span class="text-[11px] text-rose-400 font-semibold bg-rose-500/10 px-1.5 py-0.5 rounded">&gt;2x Tier Avg</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filters Toolbar -->
+    <section class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Month Filter -->
+        <div>
+          <label class="block text-[10px] text-slate-400 font-medium uppercase mb-1">Closed Month</label>
+          <select id="filter-month" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-azure-500">
+            <option value="ALL">All Months</option>
+          </select>
+        </div>
+
+        <!-- Work Item Type Filter -->
+        <div>
+          <label class="block text-[10px] text-slate-400 font-medium uppercase mb-1">Work Item Type</label>
+          <select id="filter-type" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-azure-500">
+            <option value="ALL">All Item Types</option>
+          </select>
+        </div>
+
+        <!-- Assignee Filter -->
+        <div>
+          <label class="block text-[10px] text-slate-400 font-medium uppercase mb-1">Assigned To</label>
+          <select id="filter-assignee" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-azure-500">
+            <option value="ALL">All Team Members</option>
+          </select>
+        </div>
+
+        <!-- Tag Filter -->
+        <div>
+          <label class="block text-[10px] text-slate-400 font-medium uppercase mb-1">Tag Filter</label>
+          <select id="filter-tag" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-azure-500">
+            <option value="ALL">All Tags</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Outlier Toggle -->
+      <div class="flex items-center gap-3 bg-slate-950 p-2 rounded-xl border border-slate-800">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="toggle-outliers-only" class="sr-only peer">
+          <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600"></div>
+        </label>
+        <span class="text-xs font-semibold text-rose-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Show Retro Outliers Only
+        </span>
+      </div>
+    </section>
+
+    <!-- Visualization Section -->
+    <section class="bg-slate-900/90 rounded-xl p-5 border border-slate-800 shadow-md space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-chart-scatter text-azure-400"></i> Active Business Days vs. Story Points
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">Measures calendar time spent between <code class="text-azure-300 font-mono">activated_date</code> and <code class="text-azure-300 font-mono">closed_date</code> excluding weekends</p>
+        </div>
+
+        <!-- Visualization Mode Toggle Switcher -->
+        <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-medium">
+          <button id="btn-mode-scatter" class="px-3 py-1.5 rounded-lg text-white bg-azure-600 shadow-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-chart-line"></i> Scatter + Regression
+          </button>
+          <button id="btn-mode-boxplot" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-boxes-packing"></i> Box & Whisker
+          </button>
+        </div>
+      </div>
+
+      <!-- Chart Container -->
+      <div class="relative h-[420px] w-full bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+        <canvas id="main-chart"></canvas>
+      </div>
+
+      <!-- Live Correlation Mathematical Formula Explanation -->
+      <div id="correlation-explanation-box" class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300">
+        <div>
+          <span class="text-slate-500 block text-[10px] font-bold uppercase">Linear Regression Equation</span>
+          <span id="formula-eq" class="font-mono text-sm text-azure-300 font-semibold">y = 0.00x + 0.00</span>
+        </div>
+        <div>
+          <span class="text-slate-500 block text-[10px] font-bold uppercase">Coefficient of Determination (R²)</span>
+          <span id="formula-r2" class="font-mono text-sm text-sky-300 font-semibold">R² = 0.00</span>
+          <span class="text-[10px] text-slate-500 block">Variance explained by estimate</span>
+        </div>
+        <div>
+          <span class="text-slate-500 block text-[10px] font-bold uppercase">Estimation Quality Assessment</span>
+          <span id="formula-assessment" class="font-semibold text-emerald-400 block mt-0.5">Calculating...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom Grid: Estimation Breakdown & Outlier Cards -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- Table 1: Engineer Estimation Efficiency -->
+      <div class="bg-slate-900/90 rounded-xl p-5 border border-slate-800 shadow-md space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-users text-indigo-400"></i> Assignee Estimation Efficiency
+          </h3>
+          <span class="text-[10px] text-slate-400">Avg Active Days per Story Point</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="text-slate-400 border-b border-slate-800 text-[10px] font-semibold uppercase">
+                <th class="py-2 px-2">Assignee</th>
+                <th class="py-2 px-2 text-center">Completed</th>
+                <th class="py-2 px-2 text-center">Total SP</th>
+                <th class="py-2 px-2 text-center">Avg Days / SP</th>
+                <th class="py-2 px-2 text-right">Predictability Rating</th>
+              </tr>
+            </thead>
+            <tbody id="table-assignees-body" class="divide-y divide-slate-800/60 font-mono">
+              <!-- Dynamically Injected -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Table 2: Story Point Tier Cycle Time Summary -->
+      <div class="bg-slate-900/90 rounded-xl p-5 border border-slate-800 shadow-md space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-layer-group text-amber-400"></i> Story Point Tier Breakdown
+          </h3>
+          <span class="text-[10px] text-slate-400">Actual Active Day Expectations</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="text-slate-400 border-b border-slate-800 text-[10px] font-semibold uppercase">
+                <th class="py-2 px-2">Point Size</th>
+                <th class="py-2 px-2 text-center">Items</th>
+                <th class="py-2 px-2 text-center">Median Days</th>
+                <th class="py-2 px-2 text-center">Avg Days</th>
+                <th class="py-2 px-2 text-right">Expected Threshold</th>
+              </tr>
+            </thead>
+            <tbody id="table-tiers-body" class="divide-y divide-slate-800/60 font-mono">
+              <!-- Dynamically Injected -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    /* ==========================================================================
+       1. FALLBACK MOCK DATASET (Used if Jinja2 does not supply cards_json)
+       ========================================================================== */
+    const FALLBACK_MOCK_CARDS = [
+      { id: '101', title: 'Implement JWT Auth Service', assigned_to: 'Alex Rivera', story_points: 3, activated_date: '2026-01-05', closed_date: '2026-01-08', work_item_type: 'User Story', tags: ['Backend', 'Security'], area_path: 'Auth' },
+      { id: '102', title: 'Fix CSS Grid Layout on Mobile', assigned_to: 'Sarah Chen', story_points: 1, activated_date: '2026-01-06', closed_date: '2026-01-07', work_item_type: 'Bug', tags: ['Frontend', 'UI'], area_path: 'Web' },
+      { id: '103', title: 'Migrate DB to PostgreSQL 16', assigned_to: 'Marcus Vance', story_points: 8, activated_date: '2026-01-05', closed_date: '2026-01-20', work_item_type: 'Feature', tags: ['Database', 'Infra'], area_path: 'Core' },
+      { id: '104', title: 'Create Cypress E2E Tests', assigned_to: 'Elena Rostova', story_points: 5, activated_date: '2026-01-12', closed_date: '2026-01-19', work_item_type: 'Tech Debt', tags: ['QA', 'Testing'], area_path: 'Web' },
+      { id: '105', title: 'OAuth Refresh Token Bug', assigned_to: 'Alex Rivera', story_points: 2, activated_date: '2026-01-14', closed_date: '2026-01-28', work_item_type: 'Bug', tags: ['Security', 'Outlier'], area_path: 'Auth' }, // OUTLIER
+      { id: '106', title: 'Stripe Payment Gateway Sync', assigned_to: 'David Kim', story_points: 5, activated_date: '2026-02-02', closed_date: '2026-02-09', work_item_type: 'User Story', tags: ['Payments'], area_path: 'Billing' },
+      { id: '107', title: 'User Profile Avatar Upload', assigned_to: 'Sarah Chen', story_points: 2, activated_date: '2026-02-03', closed_date: '2026-02-05', work_item_type: 'User Story', tags: ['Frontend'], area_path: 'Web' },
+      { id: '108', title: 'Kubernetes Ingress Controller Tuning', assigned_to: 'Marcus Vance', story_points: 3, activated_date: '2026-02-09', closed_date: '2026-02-13', work_item_type: 'Tech Debt', tags: ['DevOps'], area_path: 'Core' },
+      { id: '109', title: 'GraphQL Schema Stitching', assigned_to: 'Alex Rivera', story_points: 8, activated_date: '2026-02-02', closed_date: '2026-02-24', work_item_type: 'Feature', tags: ['API', 'Outlier'], area_path: 'Auth' }, // OUTLIER
+      { id: '110', title: 'Redis Cache Memory Leak Fix', assigned_to: 'David Kim', story_points: 1, activated_date: '2026-02-16', closed_date: '2026-02-17', work_item_type: 'Bug', tags: ['Backend'], area_path: 'Core' },
+      { id: '111', title: 'Design System Button Components', assigned_to: 'Sarah Chen', story_points: 3, activated_date: '2026-03-02', closed_date: '2026-03-05', work_item_type: 'User Story', tags: ['Frontend', 'UI'], area_path: 'Web' },
+      { id: '112', title: 'GDPR Export Endpoint', assigned_to: 'Elena Rostova', story_points: 5, activated_date: '2026-03-02', closed_date: '2026-03-09', work_item_type: 'User Story', tags: ['Compliance'], area_path: 'Core' },
+      { id: '113', title: 'Webhook Retries Backoff', assigned_to: 'David Kim', story_points: 2, activated_date: '2026-03-09', closed_date: '2026-03-11', work_item_type: 'Tech Debt', tags: ['API'], area_path: 'Billing' },
+      { id: '114', title: 'Multi-Tenant Auth Tenant Isolation', assigned_to: 'Alex Rivera', story_points: 13, activated_date: '2026-03-02', closed_date: '2026-03-20', work_item_type: 'Feature', tags: ['Security'], area_path: 'Auth' }
+    ];
+
+    /* ==========================================================================
+       2. BUSINESS DAYS CALCULATOR (Excludes Saturdays & Sundays)
+       ========================================================================== */
+    function calculateBusinessDays(startDateStr, endDateStr) {
+      if (!startDateStr || !endDateStr) return 0;
+      
+      const start = new Date(startDateStr);
+      const end = new Date(endDateStr);
+
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+      if (end < start) return 0;
+
+      let count = 0;
+      const cur = new Date(start);
+
+      while (cur <= end) {
+        const dayOfWeek = cur.getDay(); // 0 = Sunday, 6 = Saturday
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          count++;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      // If activated and closed on the same business day, treat as 1 business day
+      return Math.max(1, count);
+    }
+
+    /* ==========================================================================
+       3. DATA INGESTION & JINJA SETUP
+       ========================================================================== */
+    let rawCards = [];
+
+    function initData() {
+      const injectedEl = document.getElementById('devops-data-injected');
+      let injectedData = null;
+
+      try {
+        if (injectedEl && injectedEl.textContent.trim()) {
+          injectedData = JSON.parse(injectedEl.textContent.trim());
+        }
+      } catch (e) {
+        console.warn("Jinja2 template tag not replaced or invalid JSON; using fallback dataset.", e);
+      }
+
+      if (injectedData && Array.isArray(injectedData) && injectedData.length > 0) {
+        rawCards = injectedData;
+        document.getElementById('jinja-status-text').textContent = "Loaded Jinj
