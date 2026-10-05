@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
 <head>
@@ -355,4 +354,383 @@
 
       if (injectedData && Array.isArray(injectedData) && injectedData.length > 0) {
         rawCards = injectedData;
-        document.getElementById('jinja-status-text').textContent = "Loaded Jinj
+        document.getElementById('jinja-status-text').textContent = "Loaded Jinja2 Dataset";
+        document.getElementById('jinja-status-badge').className = "px-2.5 py-1 rounded-lg text-xs font-semibold bg-azure-500/10 text-azure-400 border border-azure-500/20 flex items-center gap-1.5";
+      } else {
+        rawCards = FALLBACK_MOCK_CARDS;
+      }
+
+      // Process cards: calculate business days & parse closed month
+      rawCards.forEach(card => {
+        card.activeBusinessDays = calculateBusinessDays(card.activated_date, card.closed_date);
+        
+        if (card.closed_date) {
+          const d = new Date(card.closed_date);
+          const monthYear = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+          card.closedMonth = monthYear;
+        } else {
+          card.closedMonth = 'Unknown';
+        }
+      });
+
+      populateFilterDropdowns();
+    }
+
+    /* ==========================================================================
+       4. DYNAMIC FILTERS SETUP
+       ========================================================================== */
+    function populateFilterDropdowns() {
+      const months = [...new Set(rawCards.map(c => c.closedMonth))].filter(Boolean).sort();
+      const types = [...new Set(rawCards.map(c => c.work_item_type))].filter(Boolean).sort();
+      const assignees = [...new Set(rawCards.map(c => c.assigned_to))].filter(Boolean).sort();
+      
+      const allTags = new Set();
+      rawCards.forEach(c => {
+        if (Array.isArray(c.tags)) c.tags.forEach(t => allTags.add(t));
+      });
+
+      const selMonth = document.getElementById('filter-month');
+      months.forEach(m => selMonth.add(new Option(m, m)));
+
+      const selType = document.getElementById('filter-type');
+      types.forEach(t => selType.add(new Option(t, t)));
+
+      const selAssignee = document.getElementById('filter-assignee');
+      assignees.forEach(a => selAssignee.add(new Option(a, a)));
+
+      const selTag = document.getElementById('filter-tag');
+      [...allTags].sort().forEach(t => selTag.add(new Option(t, t)));
+    }
+
+    function getFilteredCards() {
+      const month = document.getElementById('filter-month').value;
+      const type = document.getElementById('filter-type').value;
+      const assignee = document.getElementById('filter-assignee').value;
+      const tag = document.getElementById('filter-tag').value;
+      const outliersOnly = document.getElementById('toggle-outliers-only').checked;
+
+      return rawCards.filter(c => {
+        if (month !== 'ALL' && c.closedMonth !== month) return false;
+        if (type !== 'ALL' && c.work_item_type !== type) return false;
+        if (assignee !== 'ALL' && c.assigned_to !== assignee) return false;
+        if (tag !== 'ALL' && (!Array.isArray(c.tags) || !c.tags.includes(tag))) return false;
+        
+        if (outliersOnly) {
+          const expectedAvg = (c.story_points || 1) * 1.2; // Baseline expectation
+          if (c.activeBusinessDays <= expectedAvg * 2) return false; // Flag if >2x
+        }
+        return true;
+      });
+    }
+
+    /* ==========================================================================
+       5. MATHEMATICAL CORRELATION & REGRESSION (Pearson r, Slope, Intercept)
+       ========================================================================== */
+    function calculateCorrelationStats(items) {
+      const n = items.length;
+      if (n < 2) {
+        return { r: 0, r2: 0, slope: 0, intercept: 0, strength: 'Insufficient Data' };
+      }
+
+      let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+
+      items.forEach(item => {
+        const x = item.story_points || 0;
+        const y = item.activeBusinessDays || 0;
+        sumX += x;
+        sumY += y;
+        sumXY += (x * y);
+        sumX2 += (x * x);
+        sumY2 += (y * y);
+      });
+
+      const numerator = (n * sumXY) - (sumX * sumY);
+      const denominator = Math.sqrt(((n * sumX2) - (sumX * sumX)) * ((n * sumY2) - (sumY * sumY)));
+
+      const r = denominator === 0 ? 0 : numerator / denominator;
+      const r2 = r * r;
+
+      // Linear Regression Slope (m) and Intercept (b): y = mx + b
+      const slopeDenominator = (n * sumX2) - (sumX * sumX);
+      const slope = slopeDenominator === 0 ? 0 : ((n * sumXY) - (sumX * sumY)) / slopeDenominator;
+      const intercept = (sumY - (slope * sumX)) / n;
+
+      let strength = 'Weak Correlation';
+      if (Math.abs(r) >= 0.75) strength = 'Strong Positive Correlation';
+      else if (Math.abs(r) >= 0.5) strength = 'Moderate Correlation';
+      else if (Math.abs(r) < 0.25) strength = 'No / Negligible Correlation';
+
+      return { r, r2, slope, intercept, strength };
+    }
+
+    /* ==========================================================================
+       6. CHART VISUALIZATION ENGINE (Chart.js)
+       ========================================================================== */
+    let mainChart = null;
+    let currentChartMode = 'scatter';
+
+    function renderChart(filteredCards) {
+      const ctx = document.getElementById('main-chart').getContext('2d');
+      const stats = calculateCorrelationStats(filteredCards);
+
+      if (mainChart) mainChart.destroy();
+
+      if (currentChartMode === 'scatter') {
+        renderScatterPlot(ctx, filteredCards, stats);
+      } else {
+        renderBoxPlot(ctx, filteredCards);
+      }
+
+      // Update Formula Card Text
+      document.getElementById('formula-eq').textContent = `y = ${stats.slope.toFixed(2)}x + ${stats.intercept.toFixed(2)}`;
+      document.getElementById('formula-r2').textContent = `R² = ${stats.r2.toFixed(3)}`;
+      document.getElementById('formula-assessment').textContent = `${stats.strength} (r = ${stats.r.toFixed(2)})`;
+
+      // Update KPI Correlation Box
+      document.getElementById('kpi-corr-r').textContent = stats.r.toFixed(2);
+      document.getElementById('kpi-corr-strength').textContent = stats.strength;
+    }
+
+    function renderScatterPlot(ctx, items, stats) {
+      const scatterPoints = items.map(c => ({
+        x: c.story_points,
+        y: c.activeBusinessDays,
+        rawCard: c
+      }));
+
+      // Generate Regression Line points
+      const maxSP = Math.max(...items.map(c => c.story_points), 13);
+      const regressionLine = [
+        { x: 0, y: Math.max(0, stats.intercept) },
+        { x: maxSP, y: Math.max(0, (stats.slope * maxSP) + stats.intercept) }
+      ];
+
+      mainChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: 'DevOps Work Items',
+              data: scatterPoints,
+              backgroundColor: (ctx) => {
+                const card = ctx.raw?.rawCard;
+                if (!card) return '#0078d4';
+                const expAvg = card.story_points * 1.2;
+                return card.activeBusinessDays > expAvg * 2 ? '#f43f5e' : '#0284c7';
+              },
+              borderColor: '#38bdf8',
+              borderWidth: 1.5,
+              pointRadius: 7,
+              pointHoverRadius: 11
+            },
+            {
+              type: 'line',
+              label: 'Linear Regression Trendline',
+              data: regressionLine,
+              borderColor: '#10b981',
+              borderWidth: 2,
+              borderDash: [6, 6],
+              fill: false,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, labels: { color: '#94a3b8', font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const card = ctx.raw?.rawCard;
+                  if (!card) return '';
+                  return `AB#${card.id}: ${card.title} (${card.story_points} SP ➔ ${card.activeBusinessDays} Business Days)`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Story Points (SP)', color: '#94a3b8', font: { size: 11, weight: 'bold' } },
+              grid: { color: 'rgba(51, 65, 85, 0.4)' },
+              ticks: { color: '#cbd5e1' },
+              min: 0
+            },
+            y: {
+              title: { display: true, text: 'Active Business Days (Excl. Weekends)', color: '#94a3b8', font: { size: 11, weight: 'bold' } },
+              grid: { color: 'rgba(51, 65, 85, 0.4)' },
+              ticks: { color: '#cbd5e1' },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    function renderBoxPlot(ctx, items) {
+      // Group items by story point tiers
+      const tiers = [1, 2, 3, 5, 8, 13];
+      const boxData = tiers.map(sp => {
+        return items.filter(c => c.story_points === sp).map(c => c.activeBusinessDays);
+      });
+
+      mainChart = new Chart(ctx, {
+        type: 'boxplot',
+        data: {
+          labels: tiers.map(sp => `${sp} SP`),
+          datasets: [{
+            label: 'Business Days Active Distribution',
+            data: boxData,
+            backgroundColor: 'rgba(0, 120, 212, 0.25)',
+            borderColor: '#38bdf8',
+            borderWidth: 1.5,
+            outlierBackgroundColor: '#f43f5e'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Story Point Tier', color: '#94a3b8', font: { size: 11, weight: 'bold' } },
+              grid: { color: 'rgba(51, 65, 85, 0.4)' },
+              ticks: { color: '#cbd5e1' }
+            },
+            y: {
+              title: { display: true, text: 'Active Business Days', color: '#94a3b8', font: { size: 11, weight: 'bold' } },
+              grid: { color: 'rgba(51, 65, 85, 0.4)' },
+              ticks: { color: '#cbd5e1' },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    /* ==========================================================================
+       7. TABLES & KPI REFRESH
+       ========================================================================== */
+    function refreshDashboard() {
+      const cards = getFilteredCards();
+
+      // 1. Refresh KPIs
+      const totalItems = cards.length;
+      const totalPoints = cards.reduce((acc, c) => acc + (c.story_points || 0), 0);
+      const avgDays = totalItems > 0 ? (cards.reduce((acc, c) => acc + c.activeBusinessDays, 0) / totalItems) : 0;
+      
+      const outlierCount = cards.filter(c => {
+        const expAvg = (c.story_points || 1) * 1.2;
+        return c.activeBusinessDays > expAvg * 2;
+      }).length;
+
+      document.getElementById('kpi-total-items').textContent = totalItems;
+      document.getElementById('kpi-total-points').textContent = totalPoints;
+      document.getElementById('kpi-avg-days').textContent = avgDays.toFixed(1);
+      document.getElementById('kpi-outliers').textContent = outlierCount;
+
+      // 2. Render Main Chart
+      renderChart(cards);
+
+      // 3. Render Assignee Table
+      renderAssigneeTable(cards);
+
+      // 4. Render Tier Breakdown Table
+      renderTierTable(cards);
+    }
+
+    function renderAssigneeTable(cards) {
+      const assignees = {};
+
+      cards.forEach(c => {
+        const name = c.assigned_to || 'Unassigned';
+        if (!assignees[name]) assignees[name] = { count: 0, points: 0, days: 0 };
+        assignees[name].count++;
+        assignees[name].points += (c.story_points || 0);
+        assignees[name].days += c.activeBusinessDays;
+      });
+
+      const body = document.getElementById('table-assignees-body');
+      body.innerHTML = Object.keys(assignees).map(name => {
+        const data = assignees[name];
+        const daysPerPoint = data.points > 0 ? (data.days / data.points).toFixed(1) : 'N/A';
+        
+        let rating = 'Optimal';
+        let ratingClass = 'text-emerald-400 bg-emerald-500/10';
+        if (daysPerPoint > 2.0) { rating = 'Unpredictable Lag'; ratingClass = 'text-rose-400 bg-rose-500/10'; }
+        else if (daysPerPoint > 1.2) { rating = 'Moderate Variance'; ratingClass = 'text-amber-400 bg-amber-500/10'; }
+
+        return `
+          <tr class="hover:bg-slate-900/50 transition">
+            <td class="py-2.5 px-2 font-semibold text-slate-200 font-sans">${name}</td>
+            <td class="py-2.5 px-2 text-center text-slate-300">${data.count}</td>
+            <td class="py-2.5 px-2 text-center text-azure-400 font-bold">${data.points}</td>
+            <td class="py-2.5 px-2 text-center text-slate-200">${daysPerPoint} d/SP</td>
+            <td class="py-2.5 px-2 text-right">
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded ${ratingClass}">${rating}</span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderTierTable(cards) {
+      const tiers = [1, 2, 3, 5, 8, 13];
+      const body = document.getElementById('table-tiers-body');
+
+      body.innerHTML = tiers.map(sp => {
+        const tierCards = cards.filter(c => c.story_points === sp);
+        const count = tierCards.length;
+        if (count === 0) return '';
+
+        const daysArr = tierCards.map(c => c.activeBusinessDays).sort((a,b) => a - b);
+        const avg = (daysArr.reduce((a,b) => a + b, 0) / count).toFixed(1);
+        const median = daysArr[Math.floor(count / 2)];
+        const threshold = (sp * 2.5).toFixed(1);
+
+        return `
+          <tr class="hover:bg-slate-900/50 transition">
+            <td class="py-2.5 px-2 font-bold text-azure-400">${sp} SP</td>
+            <td class="py-2.5 px-2 text-center text-slate-300">${count}</td>
+            <td class="py-2.5 px-2 text-center text-slate-200">${median} days</td>
+            <td class="py-2.5 px-2 text-center text-sky-400 font-bold">${avg} days</td>
+            <td class="py-2.5 px-2 text-right text-rose-400 font-semibold">&gt; ${threshold} days</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    /* ==========================================================================
+       8. INITIALIZATION & EVENT LISTENERS
+       ========================================================================== */
+    function setupEvents() {
+      ['filter-month', 'filter-type', 'filter-assignee', 'filter-tag', 'toggle-outliers-only'].forEach(id => {
+        document.getElementById(id).addEventListener('change', refreshDashboard);
+      });
+
+      document.getElementById('btn-mode-scatter').addEventListener('click', (e) => {
+        currentChartMode = 'scatter';
+        e.currentTarget.className = "px-3 py-1.5 rounded-lg text-white bg-azure-600 shadow-sm transition flex items-center gap-1.5";
+        document.getElementById('btn-mode-boxplot').className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5";
+        refreshDashboard();
+      });
+
+      document.getElementById('btn-mode-boxplot').addEventListener('click', (e) => {
+        currentChartMode = 'boxplot';
+        e.currentTarget.className = "px-3 py-1.5 rounded-lg text-white bg-azure-600 shadow-sm transition flex items-center gap-1.5";
+        document.getElementById('btn-mode-scatter').className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5";
+        refreshDashboard();
+      });
+    }
+
+    window.onload = function() {
+      initData();
+      setupEvents();
+      refreshDashboard();
+    };
+  </script>
+</body>
+</html>
