@@ -1,0 +1,521 @@
+<style>
+  /* --- Dark Theme & Base Structural Tokens --- */
+  .mkd-dashboard-dark {
+    font-family: var(--md-text-font-family, -apple-system, BlinkMacSystemFont, Roboto, sans-serif);
+    background-color: #090d16;
+    color: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+    box-sizing: border-box;
+  }
+
+  .mkd-dashboard-dark * {
+    box-sizing: border-box;
+  }
+
+  .mkd-section {
+    margin-bottom: 2rem;
+  }
+
+  .mkd-section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.25rem;
+    border-bottom: 2px solid #38bdf8;
+    padding-bottom: 0.35rem;
+    display: inline-block;
+  }
+
+  .mkd-subtitle {
+    font-size: 0.825rem;
+    color: #94a3b8;
+    margin-bottom: 1rem;
+  }
+
+  /* --- Toolbar Controls --- */
+  .toolbar-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .ctrl-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #f8fafc;
+    padding: 0.4rem 0.85rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.775rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+
+  .ctrl-btn:hover {
+    background: #38bdf8;
+    color: #090d16;
+    border-color: #38bdf8;
+  }
+
+  /* --- Compact Interactive Cards --- */
+  .sub-team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .sub-team-card {
+    background: #111827;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.25s ease;
+    position: relative;
+  }
+
+  .sub-team-card:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 6px 16px rgba(56, 189, 248, 0.15);
+  }
+
+  .team-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .team-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+  }
+
+  .team-badge {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 700;
+  }
+
+  .leader-box {
+    margin-top: 0.6rem;
+    font-size: 0.825rem;
+    color: #e2e8f0;
+  }
+
+  .leader-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    color: #94a3b8;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 0.15rem;
+  }
+
+  .leader-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .leader-tag {
+    background: #1e293b;
+    color: #f8fafc;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.775rem;
+    border: 1px solid #334155;
+    display: inline-flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .leader-role-span {
+    color: #38bdf8;
+    font-size: 0.7rem;
+    margin-left: 0.4rem;
+    font-style: italic;
+  }
+
+  /* Progressive Expandable Content */
+  .expand-section {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.35s ease, opacity 0.25s ease, margin 0.25s ease;
+  }
+
+  .sub-team-card[data-expanded="true"] .members-expand {
+    max-height: 400px;
+    opacity: 1;
+    margin-top: 0.75rem;
+    border-top: 1px dashed #334155;
+    padding-top: 0.6rem;
+  }
+
+  .card-state-indicator {
+    display: block;
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-top: 0.6rem;
+    text-align: right;
+    font-style: italic;
+  }
+
+  /* --- Member Roster --- */
+  .member-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .member-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #cbd5e1;
+  }
+
+  .member-role {
+    color: #94a3b8;
+    font-size: 0.75rem;
+  }
+
+  /* --- Map Overlay --- */
+  .map-wrapper {
+    position: relative;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #1e293b;
+    background: #111827;
+  }
+
+  .floor-plan-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    opacity: 0.85;
+  }
+
+  .map-pin {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0,0,0,0.8);
+    transition: transform 0.2s;
+    z-index: 10;
+  }
+
+  .map-pin:hover {
+    transform: translate(-50%, -50%) scale(1.6);
+    z-index: 20;
+  }
+
+  .tooltip {
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%) translateY(5px);
+    background: #0f172a;
+    color: #ffffff;
+    padding: 0.4rem 0.65rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, transform 0.2s;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+
+  .map-pin:hover .tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .map-controls {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    background: #111827;
+    border: 1px solid #334155;
+    color: #cbd5e1;
+    padding: 0.25rem 0.65rem;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    background: #38bdf8;
+    color: #090d16;
+    border-color: #38bdf8;
+    font-weight: 700;
+  }
+</style>
+
+<div class="mkd-dashboard-dark">
+
+  <!-- SECTION 1: TEAM STRUCTURE CARDS -->
+  <div class="mkd-section">
+    <div class="mkd-section-title">Team Structure</div>
+    <div class="mkd-subtitle">Click individual cards to toggle member lists, or use the global controls below.</div>
+    
+    <div class="toolbar-controls">
+      <button class="ctrl-btn" onclick="setAllCards(false)">Collapse All</button>
+      <button class="ctrl-btn" onclick="setAllCards(true)">Expand All Rosters</button>
+    </div>
+
+    <div class="sub-team-grid" id="teamCardsContainer"></div>
+  </div>
+
+  <!-- SECTION 2: FLOOR PLAN MAP -->
+  <div class="mkd-section">
+    <div class="mkd-section-title">Floor Allocation</div>
+    <div class="mkd-subtitle">Interactive floor layout showing team member desk allocations.</div>
+    
+    <div class="map-controls" id="mapFilters">
+      <button class="filter-btn active" data-filter="all">Show All</button>
+    </div>
+
+    <div class="map-wrapper" id="mapWrapper">
+      <!-- REPLACE SRC BELOW WITH YOUR OFFICE MAP PNG -->
+      <img src="https://placehold.co/1000x500/0f172a/475569?text=Office+Floor+Plan+Layout" alt="Office Floor Plan" class="floor-plan-img">
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ==========================================================================
+     SCALABLE DATA STRUCTURE
+     Add or remove members or leads freely.
+     ========================================================================== */
+  const teamData = [
+    {
+      id: "t1",
+      name: "Frontend Engineering",
+      color: "#38bdf8",
+      members: [
+        { name: "Alex Morgan", role: "Engineering Lead", isLead: true, x: 15, y: 25 },
+        { name: "Sarah Chen", role: "Design Lead", isLead: true, x: 20, y: 25 },
+        { name: "James Wilson", role: "UI Engineer", isLead: false, x: 25, y: 25 },
+        { name: "Elena Rostova", role: "CSS Specialist", isLead: false, x: 30, y: 25 },
+        { name: "Liam Patel", role: "Junior Dev", isLead: false, x: 35, y: 25 }
+      ]
+    },
+    {
+      id: "t2",
+      name: "Backend & Cloud",
+      color: "#c084fc",
+      members: [
+        { name: "Marcus Vance", role: "Principal Architect", isLead: true, x: 15, y: 45 },
+        { name: "Devon Brooks", role: "DB Admin", isLead: false, x: 20, y: 45 },
+        { name: "Priya Sharma", role: "Cloud Infra", isLead: false, x: 25, y: 45 },
+        { name: "Lucas Meyer", role: "Node Specialist", isLead: false, x: 30, y: 45 },
+        { name: "Nina Gomez", role: "Security Eng", isLead: false, x: 35, y: 45 }
+      ]
+    },
+    {
+      id: "t3",
+      name: "Quality Assurance",
+      color: "#4ade80",
+      members: [
+        { name: "Rachel Adams", role: "QA Lead", isLead: true, x: 45, y: 25 },
+        { name: "Tom Wright", role: "Automation Lead", isLead: true, x: 50, y: 25 },
+        { name: "Kaito Tanaka", role: "SDET", isLead: false, x: 55, y: 25 },
+        { name: "Hannah Abbott", role: "Manual Tester", isLead: false, x: 60, y: 25 },
+        { name: "Omar Farooq", role: "Perf Tester", isLead: false, x: 65, y: 25 }
+      ]
+    },
+    {
+      id: "t4",
+      name: "Data & Analytics",
+      color: "#fb923c",
+      members: [
+        { name: "Dr. Aris Thorne", role: "Lead Data Scientist", isLead: true, x: 45, y: 45 },
+        { name: "Siddharth Nair", role: "Data Engineer", isLead: false, x: 50, y: 45 },
+        { name: "Chloe Bennett", role: "BI Analyst", isLead: false, x: 55, y: 45 },
+        { name: "Viktor Ivanov", role: "ML Engineer", isLead: false, x: 60, y: 45 },
+        { name: "Zoe Taylor", role: "Data Analyst", isLead: false, x: 65, y: 45 }
+      ]
+    },
+    {
+      id: "t5",
+      name: "Product & Design",
+      color: "#f472b6",
+      members: [
+        { name: "Sophie Martin", role: "Head of Product", isLead: true, x: 75, y: 25 },
+        { name: "Carlos Mendez", role: "Design Director", isLead: true, x: 80, y: 25 },
+        { name: "Aisha Khan", role: "UX Researcher", isLead: false, x: 85, y: 25 },
+        { name: "Oliver Scott", role: "Product Mgr", isLead: false, x: 90, y: 25 },
+        { name: "Emma Watson", role: "UI Designer", isLead: false, x: 95, y: 25 }
+      ]
+    },
+    {
+      id: "t6",
+      name: "DevOps & SRE",
+      color: "#facc15",
+      members: [
+        { name: "Gareth Evans", role: "DevOps Director", isLead: true, x: 75, y: 45 },
+        { name: "Yuki Takahashi", role: "SRE Engineer", isLead: false, x: 80, y: 45 },
+        { name: "Daniel Kim", role: "Build Auto", isLead: false, x: 85, y: 45 },
+        { name: "Laura Jackson", role: "SysAdmin", isLead: false, x: 90, y: 45 },
+        { name: "Ben Sullivan", role: "Cloud Ops", isLead: false, x: 95, y: 45 }
+      ]
+    }
+  ];
+
+  /* ==========================================================================
+     RENDER & INTERACTION LOGIC
+     ========================================================================== */
+
+  // Render Compact Team Cards with Accordion Rosters
+  function renderTeams() {
+    const container = document.getElementById('teamCardsContainer');
+    container.innerHTML = teamData.map((team, index) => {
+      const leads = team.members.filter(m => m.isLead);
+      const nonLeads = team.members.filter(m => !m.isLead);
+
+      return `
+        <div class="sub-team-card" id="card-${index}" data-expanded="false" onclick="toggleCard('${index}')">
+          <div class="team-header">
+            <span class="team-name">${team.name}</span>
+            <span class="team-badge" style="background:${team.color}22; color:${team.color}; border: 1px solid ${team.color}">
+              ${team.members.length} Members
+            </span>
+          </div>
+          
+          <div class="leader-box">
+            <span class="leader-title">${leads.length > 1 ? 'Team Leads:' : 'Team Lead:'}</span>
+            <div class="leader-list">
+              ${leads.map(l => `
+                <div class="leader-tag">
+                  <strong>${l.name}</strong>
+                  <span class="leader-role-span">${l.role}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Member Roster Expandable Section -->
+          <div class="expand-section members-expand">
+            <ul class="member-list">
+              ${nonLeads.map(m => `
+                <li class="member-item">
+                  <span>${m.name}</span>
+                  <span class="member-role">${m.role}</span>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+
+          <span class="card-state-indicator" id="indicator-${index}">Click to expand roster</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Toggle Single Card State
+  function toggleCard(index) {
+    const card = document.getElementById(`card-${index}`);
+    const isExpanded = card.getAttribute('data-expanded') === 'true';
+    setCardState(index, !isExpanded);
+  }
+
+  // Set Explicit Card State
+  function setCardState(index, expand) {
+    const card = document.getElementById(`card-${index}`);
+    const indicator = document.getElementById(`indicator-${index}`);
+    card.setAttribute('data-expanded', expand ? 'true' : 'false');
+    indicator.textContent = expand ? "Click to collapse" : "Click to expand roster";
+  }
+
+  // Global Expand / Collapse All
+  function setAllCards(expand) {
+    teamData.forEach((_, index) => {
+      setCardState(index, expand);
+    });
+  }
+
+  // Render Interactive Floor Map Pins
+  function renderMap() {
+    const wrapper = document.getElementById('mapWrapper');
+    const filterContainer = document.getElementById('mapFilters');
+
+    wrapper.querySelectorAll('.map-pin').forEach(pin => pin.remove());
+
+    teamData.forEach(team => {
+      team.members.forEach(member => {
+        const pin = document.createElement('div');
+        pin.className = `map-pin team-pin-${team.id}`;
+        pin.style.left = `${member.x}%`;
+        pin.style.top = `${member.y}%`;
+        pin.style.backgroundColor = team.color;
+
+        pin.innerHTML = `
+          <div class="tooltip">
+            <strong>${member.name} ${member.isLead ? '👑' : ''}</strong><br>
+            <span style="opacity:0.8">${member.role} (${team.name})</span>
+          </div>
+        `;
+        wrapper.appendChild(pin);
+      });
+    });
+
+    const existingFilters = filterContainer.querySelectorAll('.filter-btn:not([data-filter="all"])');
+    if(existingFilters.length === 0) {
+      teamData.forEach(team => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn';
+        btn.textContent = team.name;
+        btn.setAttribute('data-filter', team.id);
+        btn.addEventListener('click', (e) => filterMap(team.id, e.target));
+        filterContainer.appendChild(btn);
+      });
+    }
+  }
+
+  function filterMap(teamId, targetBtn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    targetBtn.classList.add('active');
+
+    document.querySelectorAll('.map-pin').forEach(pin => {
+      if (teamId === 'all' || pin.classList.contains(`team-pin-${teamId}`)) {
+        pin.style.display = 'block';
+      } else {
+        pin.style.display = 'none';
+      }
+    });
+  }
+
+  document.querySelector('[data-filter="all"]').addEventListener('click', (e) => filterMap('all', e.target));
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    renderTeams();
+    renderMap();
+  });
+</script>
