@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quarterly Performance & SQCDP Review Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Historical SQCDP Trends -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-full flex flex-col font-sans antialiased">
+
+    <!-- Top Navbar -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-brand-600 rounded-lg text-white">
+                    <i class="fa-solid fa-chart-line text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg leading-tight flex items-center gap-2">
+                        <span>SQCDP Review Tracker</span>
+                        <span class="text-xs font-normal bg-brand-900 text-brand-200 border border-brand-700 px-2 py-0.5 rounded-full">Cumulative</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Team Performance, Goals & Historical Progress Tracker</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <!-- File Actions -->
+                <input type="file" id="jsonFileInput" accept=".json" class="hidden" onchange="importJSON(event)">
+                
+                <button onclick="document.getElementById('jsonFileInput').click()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition flex items-center gap-1.5" title="Import historical review stack JSON">
+                    <i class="fa-solid fa-file-import text-brand-400"></i>
+                    <span class="hidden md:inline">Import JSON Stack</span>
+                </button>
+
+                <button onclick="exportJSON()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition flex items-center gap-1.5" title="Export full review history JSON">
+                    <i class="fa-solid fa-file-export text-emerald-400"></i>
+                    <span class="hidden md:inline">Export JSON Stack</span>
+                </button>
+
+                <button onclick="generateStandaloneReport()" class="px-3 py-1.5 text-xs font-medium bg-brand-600 hover:bg-brand-700 text-white rounded-lg shadow-sm transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-code"></i>
+                    <span>Export Interactive HTML Report</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <div class="flex-1 max-w-7xl w-full mx-auto flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Sidebar Navigation (Timeline & Employee Info) -->
+        <aside class="w-full md:w-72 bg-white border-r border-slate-200 flex flex-col flex-shrink-0">
+            <!-- Employee Info Header -->
+            <div class="p-4 border-b border-slate-200 bg-slate-50/50">
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Team Member Profile</div>
+                <div class="space-y-2">
+                    <input type="text" id="employeeName" onchange="updateProfileInfo()" class="w-full text-sm font-semibold bg-white border border-slate-300 rounded px-2.5 py-1 focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Employee Name">
+                    <input type="text" id="managerName" onchange="updateProfileInfo()" class="w-full text-xs text-slate-600 bg-white border border-slate-300 rounded px-2.5 py-1 focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Manager Name">
+                    <input type="text" id="department" onchange="updateProfileInfo()" class="w-full text-xs text-slate-600 bg-white border border-slate-300 rounded px-2.5 py-1 focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Department / Role">
+                </div>
+            </div>
+
+            <!-- Review Timeline Navigation -->
+            <div class="p-3 border-b border-slate-200 flex justify-between items-center bg-slate-100">
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Review History</span>
+                <button onclick="addNewReviewCycle()" class="px-2.5 py-1 text-xs font-medium bg-brand-600 hover:bg-brand-700 text-white rounded shadow-sm transition flex items-center gap-1">
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <span>New Review</span>
+                </button>
+            </div>
+
+            <div id="reviewTimelineList" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                <!-- Timeline items render dynamically -->
+            </div>
+
+            <div class="p-3 border-t border-slate-200 bg-slate-50 text-center">
+                <button onclick="toggleAnalyticsModal()" class="w-full py-2 px-3 text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 rounded border border-brand-200 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>View SQCDP Trends</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 bg-slate-50 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
+            
+            <form id="activeReviewForm" onsubmit="event.preventDefault();" class="space-y-6 max-w-4xl mx-auto">
+                
+                <!-- Review Meta Bar -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-900" id="currentReviewTitle">Quarterly Performance Review</h2>
+                            <p class="text-xs text-slate-500">Record conversation notes, SQCDP status, and forward objectives.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-400 font-medium">Status:</span>
+                            <span id="reviewStatusBadge" class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Active Review</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Quarter</label>
+                            <select id="reviewQuarter" class="w-full text-sm bg-slate-50 border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                                <option value="Q1">Q1</option>
+                                <option value="Q2">Q2</option>
+                                <option value="Q3">Q3</option>
+                                <option value="Q4">Q4</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Year</label>
+                            <input type="number" id="reviewYear" min="2020" max="2100" class="w-full text-sm bg-slate-50 border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Review Date</label>
+                            <input type="date" id="reviewDate" class="w-full text-sm bg-slate-50 border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 1: Evaluation of Last Quarter's Objectives -->
+                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2">
+                                <i class="fa-solid fa-list-check text-brand-600"></i>
+                                1. Last Quarter's Objectives Evaluation
+                            </h3>
+                            <p class="text-xs text-slate-500">Auto-carried forward from previous review cycle.</p>
+                        </div>
+                        <button type="button" onclick="addPrevObjectiveRow()" class="text-xs bg-brand-50 hover:bg-brand-100 text-brand-700 px-3 py-1.5 rounded-lg border border-brand-200 font-medium transition flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Add Goal
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <div id="prevObjectivesList" class="space-y-4">
+                            <!-- Dynamic items -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 2: SQCDP Qualitative Framework -->
+                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                        <h3 class="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2">
+                            <i class="fa-solid fa-cubes text-brand-600"></i>
+                            2. SQCDP Framework & Qualitative Assessment
+                        </h3>
+                        <p class="text-xs text-slate-500">Evaluate Safety, Quality, Cost, Delivery, and People performance pillars.</p>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        
+                        <!-- SAFETY -->
+                        <div class="p-4 border border-slate-200 rounded-lg bg-slate-50/50">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                                <span class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-xs">S</span>
+                                    Safety & Well-being
+                                </span>
+                                <select id="sqcdp_safety_status" class="sqcdp-select text-xs font-semibold px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-brand-500">
+                                    <option value="Exceeds">Outstanding / Exceeds</option>
+                                    <option value="Met" selected>On Track / Met</option>
+                                    <option value="Needs Focus">Needs Focus</option>
+                                    <option value="At Risk">At Risk</option>
+                                </select>
+                            </div>
+                            <textarea id="sqcdp_safety_notes" rows="2" class="w-full text-xs p-2.5 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-brand-500" placeholder="Safety adherence, ergonomic setup, health & wellness, hazard reporting..."></textarea>
+                        </div>
+
+                        <!-- QUALITY -->
+                        <div class="p-4 border border-slate-200 rounded-lg bg-slate-50/50">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                                <span class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">Q</span>
+                                    Quality & Work Standards
+                                </span>
+                                <select id="sqcdp_quality_status" class="sqcdp-select text-xs font-semibold px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-brand-500">
+                                    <option value="Exceeds">Outstanding / Exceeds</option>
+                                    <option value="Met" selected>On Track / Met</option>
+                                    <option value="Needs Focus">Needs Focus</option>
+                                    <option value="At Risk">At Risk</option>
+                                </select>
+                            </div>
+                            <textarea id="sqcdp_quality_notes" rows="2" class="w-full text-xs p-2.5 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-brand-500" placeholder="Deliverable accuracy, thoroughness, adherence to best practices, error rates..."></textarea>
+                        </div>
+
+                        <!-- COST -->
+                        <div class="p-4 border border-slate-200 rounded-lg bg-slate-50/50">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                                <span class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">C</span>
+                                    Cost & Resource Efficiency
+                                </span>
+                                <select id="sqcdp_cost_status" class="sqcdp-select text-xs font-semibold px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-brand-500">
+                                    <option value="Exceeds">Outstanding / Exceeds</option>
+                                    <option value="Met" selected>On Track / Met</option>
+                                    <option value="Needs Focus">Needs Focus</option>
+                                    <option value="At Risk">At Risk</option>
+                                </select>
+                            </div>
+                            <textarea id="sqcdp_cost_notes" rows="2" class="w-full text-xs p-2.5 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-brand-500" placeholder="Budget adherence, cloud/tooling optimization, effective resource utilization..."></textarea>
+                        </div>
+
+                        <!-- DELIVERY -->
+                        <div class="p-4 border border-slate-200 rounded-lg bg-slate-50/50">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                                <span class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs">D</span>
+                                    Delivery & Milestones
+                                </span>
+                                <select id="sqcdp_delivery_status" class="sqcdp-select text-xs font-semibold px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-brand-500">
+                                    <option value="Exceeds">Outstanding / Exceeds</option>
+                                    <option value="Met" selected>On Track / Met</option>
+                                    <option value="Needs Focus">Needs Focus</option>
+                                    <option value="At Risk">At Risk</option>
+                                </select>
+                            </div>
+                            <textarea id="sqcdp_delivery_notes" rows="2" class="w-full text-xs p-2.5 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-brand-500" placeholder="On-time completion of commitments, sprint velocity, project milestone execution..."></textarea>
+                        </div>
+
+                        <!-- PEOPLE -->
+                        <div class="p-4 border border-slate-200 rounded-lg bg-slate-50/50">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                                <span class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">P</span>
+                                    People & Team Collaboration
+                                </span>
+                                <select id="sqcdp_people_status" class="sqcdp-select text-xs font-semibold px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-brand-500">
+                                    <option value="Exceeds">Outstanding / Exceeds</option>
+                                    <option value="Met" selected>On Track / Met</option>
+                                    <option value="Needs Focus">Needs Focus</option>
+                                    <option value="At Risk">At Risk</option>
+                                </select>
+                            </div>
+                            <textarea id="sqcdp_people_notes" rows="2" class="w-full text-xs p-2.5 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-brand-500" placeholder="Communication, cross-functional teamwork, mentorship, continuous learning..."></textarea>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- SECTION 3: Highlights & Struggles -->
+                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                        <h3 class="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2">
+                            <i class="fa-solid fa-pen-to-square text-brand-600"></i>
+                            3. Quarter Highlights & Challenges
+                        </h3>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-bold text-emerald-700 uppercase mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-star text-emerald-500"></i> Highlights & Key Wins
+                            </label>
+                            <textarea id="highlights" rows="4" class="w-full text-xs p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500" placeholder="Standout wins, accomplishments, praise received..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-rose-700 uppercase mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-triangle-exclamation text-rose-500"></i> Struggles & Blockers
+                            </label>
+                            <textarea id="struggles" rows="4" class="w-full text-xs p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500" placeholder="Key difficulties, delays, skill or tooling hurdles..."></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 4: Feedback & Concerns -->
+                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                        <h3 class="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2">
+                            <i class="fa-solid fa-comments text-brand-600"></i>
+                            4. Feedback & Mutual Concerns
+                        </h3>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-user-shield text-indigo-500"></i> Concerns Raised by Manager
+                            </label>
+                            <textarea id="managerConcerns" rows="4" class="w-full text-xs p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500" placeholder="Manager feedback, quality standards, expectations..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-user-check text-cyan-500"></i> Concerns / Feedback by Reviewee
+                            </label>
+                            <textarea id="revieweeConcerns" rows="4" class="w-full text-xs p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500" placeholder="Employee feedback on workload, environment, needed support..."></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 5: Objectives for Next Quarter -->
+                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2">
+                                <i class="fa-solid fa-bullseye text-brand-600"></i>
+                                5. Forward Objectives for Next Quarter
+                            </h3>
+                            <p class="text-xs text-slate-500">These will carry forward into the next quarterly review.</p>
+                        </div>
+                        <button type="button" onclick="addNextObjectiveRow()" class="text-xs bg-brand-50 hover:bg-brand-100 text-brand-700 px-3 py-1.5 rounded-lg border border-brand-200 font-medium transition flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Add Objective
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <div id="nextObjectivesList" class="space-y-4">
+                            <!-- Dynamic items -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Form Controls Bottom Bar -->
+                <div class="flex justify-between items-center pt-2">
+                    <button type="button" onclick="deleteCurrentReview()" class="px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition flex items-center gap-1">
+                        <i class="fa-solid fa-trash"></i> Delete This Review Entry
+                    </button>
+                    
+                    <div class="text-xs text-slate-400 italic">
+                        Auto-saved to local browser storage
+                    </div>
+                </div>
+
+            </form>
+        </main>
+    </div>
+
+    <!-- SQCDP Analytics Modal -->
+    <div id="analyticsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-brand-600"></i>
+                    Historical SQCDP Performance Trends
+                </h3>
+                <button onclick="toggleAnalyticsModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 space-y-6">
+                <div class="h-64 sm:h-80 w-full">
+                    <canvas id="sqcdpTrendChart"></canvas>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center text-xs">
+                    <div class="p-3 bg-rose-50 border border-rose-100 rounded-lg">
+                        <div class="font-bold text-rose-800">Safety</div>
+                        <div class="text-slate-500 mt-1" id="stat_safety">--</div>
+                    </div>
+                    <div class="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                        <div class="font-bold text-blue-800">Quality</div>
+                        <div class="text-slate-500 mt-1" id="stat_quality">--</div>
+                    </div>
+                    <div class="p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
+                        <div class="font-bold text-emerald-800">Cost</div>
+                        <div class="text-slate-500 mt-1" id="stat_cost">--</div>
+                    </div>
+                    <div class="p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                        <div class="font-bold text-amber-800">Delivery</div>
+                        <div class="text-slate-500 mt-1" id="stat_delivery">--</div>
+                    </div>
+                    <div class="p-3 bg-purple-50 border border-purple-100 rounded-lg">
+                        <div class="font-bold text-purple-800">People</div>
+                        <div class="text-slate-500 mt-1" id="stat_people">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        const STORAGE_KEY = 'sqcdp_cumulative_reviews_data_v2';
+        
+        // Root State Object
+        let state = {
+            employeeName: "Alex Morgan",
+            managerName: "Sarah Jenkins",
+            department: "Engineering / Product",
+            activeReviewId: null,
+            reviews: []
+        };
+
+        let trendChart = null;
+
+        // --- INIT & LOCAL STORAGE ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFromLocalStorage();
+            
+            // If empty state, create initial default review
+            if (!state.reviews || state.reviews.length === 0) {
+                addNewReviewCycle(true);
+            } else {
+                if (!state.activeReviewId) {
+                    state.activeReviewId = state.reviews[0].id;
+                }
+                renderTimeline();
+                loadActiveReviewToForm();
+            }
+
+            // Attach auto-save listener
+            document.getElementById('activeReviewForm').addEventListener('input', saveActiveFormToState);
+            document.getElementById('activeReviewForm').addEventListener('change', saveActiveFormToState);
+        });
+
+        function saveToLocalStorage() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function loadFromLocalStorage() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                try {
+                    state = JSON.parse(raw);
+                    document.getElementById('employeeName').value = state.employeeName || '';
+                    document.getElementById('managerName').value = state.managerName || '';
+                    document.getElementById('department').value = state.department || '';
+                } catch (e) {
+                    console.error("Error loading local storage", e);
+                }
+            }
+        }
+
+        function updateProfileInfo() {
+            state.employeeName = document.getElementById('employeeName').value;
+            state.managerName = document.getElementById('managerName').value;
+            state.department = document.getElementById('department').value;
+            saveToLocalStorage();
+        }
+
+        // --- REVIEW NAVIGATION & CYCLE MANAGEMENT ---
+        function createNewReviewObject(quarter = 'Q1', year = new Date().getFullYear()) {
+            return {
+                id: 'rev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                quarter: quarter,
+                year: year,
+                date: new Date().toISOString().split('T')[0],
+                previousObjectives: [],
+                sqcdp: {
+                    safety: { status: 'Met', notes: '' },
+                    quality: { status: 'Met', notes: '' },
+                    cost: { status: 'Met', notes: '' },
+                    delivery: { status: 'Met', notes: '' },
+                    people: { status: 'Met', notes: '' }
+                },
+                highlights: '',
+                struggles: '',
+                managerConcerns: '',
+                revieweeConcerns: '',
+                nextObjectives: []
+            };
+        }
+
+        function addNewReviewCycle(isInitial = false) {
+            // Predict next quarter
+            let nextQ = 'Q1';
+            let nextYr = new Date().getFullYear();
+
+            if (state.reviews.length > 0) {
+                const latest = state.reviews[0]; // reviews sorted newest first
+                if (latest.quarter === 'Q1') nextQ = 'Q2';
+                else if (latest.quarter === 'Q2') nextQ = 'Q3';
+                else if (latest.quarter === 'Q3') nextQ = 'Q4';
+                else if (latest.quarter === 'Q4') { nextQ = 'Q1'; nextYr = Number(latest.year) + 1; }
+            }
+
+            const newRev = createNewReviewObject(nextQ, nextYr);
+
+            // Objective Carry-Over from most recent previous review
+            if (state.reviews.length > 0) {
+                const prevRev = state.reviews[0];
+                if (prevRev.nextObjectives && prevRev.nextObjectives.length > 0) {
+                    newRev.previousObjectives = prevRev.nextObjectives.map(obj => ({
+                        title: obj.title,
+                        isMet: false,
+                        notes: obj.notes || ''
+                    }));
+                }
+            }
+
+            // Pre-populate defaults if no carried over goals
+            if (newRev.previousObjectives.length === 0) {
+                newRev.previousObjectives.push({ title: '', isMet: false, notes: '' });
+            }
+            newRev.nextObjectives.push({ title: '', targetDate: '', notes: '' });
+
+            // Add to top of stack (newest first)
+            state.reviews.unshift(newRev);
+            state.activeReviewId = newRev.id;
+
+            saveToLocalStorage();
+            renderTimeline();
+            loadActiveReviewToForm();
+        }
+
+        function switchActiveReview(id) {
+            saveActiveFormToState();
+            state.activeReviewId = id;
+            saveToLocalStorage();
+            renderTimeline();
+            loadActiveReviewToForm();
+        }
+
+        function deleteCurrentReview() {
+            if (state.reviews.length <= 1) {
+                alert("Cannot delete the only review entry in your timeline.");
+                return;
+            }
+            if (confirm("Are you sure you want to delete this review entry from the stack?")) {
+                state.reviews = state.reviews.filter(r => r.id !== state.activeReviewId);
+                state.activeReviewId = state.reviews[0].id;
+                saveToLocalStorage();
+                renderTimeline();
+                loadActiveReviewToForm();
+            }
+        }
+
+        function renderTimeline() {
+            const list = document.getElementById('reviewTimelineList');
+            list.innerHTML = '';
+
+            state.reviews.forEach(rev => {
+                const isActive = rev.id === state.activeReviewId;
+                const card = document.createElement('div');
+                card.onclick = () => switchActiveReview(rev.id);
+                card.className = `p-3 rounded-lg border cursor-pointer transition flex justify-between items-center ${
+                    isActive 
+                    ? 'bg-brand-50 border-brand-300 text-brand-900 shadow-sm' 
+                    : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                }`;
+
+                card.innerHTML = `
+                    <div>
+                        <div class="font-bold text-sm flex items-center gap-2">
+                            <span>${rev.quarter} ${rev.year}</span>
+                            ${isActive ? '<span class="w-2 h-2 rounded-full bg-brand-600"></span>' : ''}
+                        </div>
+                        <div class="text-[11px] text-slate-400">${rev.date || 'No Date'}</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-xs ${isActive ? 'text-brand-600' : 'text-slate-300'}"></i>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        // --- FORM DATA BINDING ---
+        function getActiveReview() {
+            return state.reviews.find(r => r.id === state.activeReviewId);
+        }
+
+        function loadActiveReviewToForm() {
+            const rev = getActiveReview();
+            if (!rev) return;
+
+            document.getElementById('currentReviewTitle').textContent = `${rev.quarter} ${rev.year} Review`;
+            document.getElementById('reviewQuarter').value = rev.quarter;
+            document.getElementById('reviewYear').value = rev.year;
+            document.getElementById('reviewDate').value = rev.date;
+
+            // SQCDP
+            const sq = rev.sqcdp || {};
+            setSqcdpFields('safety', sq.safety);
+            setSqcdpFields('quality', sq.quality);
+            setSqcdpFields('cost', sq.cost);
+            setSqcdpFields('delivery', sq.delivery);
+            setSqcdpFields('people', sq.people);
+
+            // Text
+            document.getElementById('highlights').value = rev.highlights || '';
+            document.getElementById('struggles').value = rev.struggles || '';
+            document.getElementById('managerConcerns').value = rev.managerConcerns || '';
+            document.getElementById('revieweeConcerns').value = rev.revieweeConcerns || '';
+
+            // Previous Objectives
+            const prevList = document.getElementById('prevObjectivesList');
+            prevList.innerHTML = '';
+            (rev.previousObjectives || []).forEach(item => addPrevObjectiveRow(item.title, item.isMet, item.notes));
+
+            // Next Objectives
+            const nextList = document.getElementById('nextObjectivesList');
+            nextList.innerHTML = '';
+            (rev.nextObjectives || []).forEach(item => addNextObjectiveRow(item.title, item.targetDate, item.notes));
+        }
+
+        function setSqcdpFields(pillar, data = {}) {
+            document.getElementById(`sqcdp_${pillar}_status`).value = data.status || 'Met';
+            document.getElementById(`sqcdp_${pillar}_notes`).value = data.notes || '';
+        }
+
+        function saveActiveFormToState() {
+            const rev = getActiveReview();
+            if (!rev) return;
+
+            rev.quarter = document.getElementById('reviewQuarter').value;
+            rev.year = document.getElementById('reviewYear').value;
+            rev.date = document.getElementById('reviewDate').value;
+
+            // SQCDP
+            rev.sqcdp = {
+                safety: { status: document.getElementById('sqcdp_safety_status').value, notes: document.getElementById('sqcdp_safety_notes').value },
+                quality: { status: document.getElementById('sqcdp_quality_status').value, notes: document.getElementById('sqcdp_quality_notes').value },
+                cost: { status: document.getElementById('sqcdp_cost_status').value, notes: document.getElementById('sqcdp_cost_notes').value },
+                delivery: { status: document.getElementById('sqcdp_delivery_status').value, notes: document.getElementById('sqcdp_delivery_notes').value },
+                people: { status: document.getElementById('sqcdp_people_status').value, notes: document.getElementById('sqcdp_people_notes').value }
+            };
+
+            rev.highlights = document.getElementById('highlights').value;
+            rev.struggles = document.getElementById('struggles').value;
+            rev.managerConcerns = document.getElementById('managerConcerns').value;
+            rev.revieweeConcerns = document.getElementById('revieweeConcerns').value;
+
+            // Collect previous objectives
+            rev.previousObjectives = [];
+            document.querySelectorAll('.prev-obj-item').forEach(row => {
+                rev.previousObjectives.push({
+                    title: row.querySelector('.prev-obj-title').value,
+                    isMet: row.querySelector('.prev-obj-met').checked,
+                    notes: row.querySelector('.prev-obj-notes').value
+                });
+            });
+
+            // Collect next objectives
+            rev.nextObjectives = [];
+            document.querySelectorAll('.next-obj-item').forEach(row => {
+                rev.nextObjectives.push({
+                    title: row.querySelector('.next-obj-title').value,
+                    targetDate: row.querySelector('.next-obj-target').value,
+                    notes: row.querySelector('.next-obj-notes').value
+                });
+            });
+
+            saveToLocalStorage();
+            renderTimeline();
+        }
+
+        // --- DYNAMIC GOALS ROWS ---
+        function addPrevObjectiveRow(title = '', isMet = false, notes = '') {
+            const container = document.getElementById('prevObjectivesList');
+            const rowId = 'p_obj_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5);
+
+            const div = document.createElement('div');
+            div.className = 'prev-obj-item p-4 border border-slate-200 rounded-lg bg-slate-50/50 space-y-3';
+            div.id = rowId;
+
+            div.innerHTML = `
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <input type="text" class="prev-obj-title font-medium text-xs sm:text-sm w-full bg-white border border-slate-300 rounded px-3 py-1.5 focus:ring-2 focus:ring-brand-500" placeholder="Objective description" value="${escapeHtml(title)}">
+                    <div class="flex items-center gap-3">
+                        <label class="inline-flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 border border-slate-300 rounded text-xs font-semibold text-slate-700">
+                            <input type="checkbox" class="prev-obj-met rounded text-brand-600 h-4 w-4" ${isMet ? 'checked' : ''}>
+                            <span>Met?</span>
+                        </label>
+                        <button type="button" onclick="document.getElementById('${rowId}').remove(); saveActiveFormToState();" class="text-slate-400 hover:text-rose-600 p-1">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+                <textarea class="prev-obj-notes text-xs w-full bg-white border border-slate-300 rounded p-2 focus:ring-2 focus:ring-brand-500" rows="2" placeholder="Outcome evidence & remarks...">${escapeHtml(notes)}</textarea>
+            `;
+            container.appendChild(div);
+        }
+
+        function addNextObjectiveRow(title = '', targetDate = '', notes = '') {
+            const container = document.getElementById('nextObjectivesList');
+            const rowId = 'n_obj_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5);
+
+            const div = document.createElement('div');
+            div.className = 'next-obj-item p-4 border border-slate-200 rounded-lg bg-slate-50/50 space-y-3';
+            div.id = rowId;
+
+            div.innerHTML = `
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <input type="text" class="next-obj-title font-medium text-xs sm:text-sm w-full bg-white border border-slate-300 rounded px-3 py-1.5 focus:ring-2 focus:ring-brand-500" placeholder="Target objective for next quarter" value="${escapeHtml(title)}">
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <input type="date" class="next-obj-target text-xs bg-white border border-slate-300 rounded px-2.5 py-1.5" value="${escapeHtml(targetDate)}">
+                        <button type="button" onclick="document.getElementById('${rowId}').remove(); saveActiveFormToState();" class="text-slate-400 hover:text-rose-600 p-1">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+                <textarea class="next-obj-notes text-xs w-full bg-white border border-slate-300 rounded p-2 focus:ring-2 focus:ring-brand-500" rows="2" placeholder="KPIs, milestones or action plan...">${escapeHtml(notes)}</textarea>
+            `;
+            container.appendChild(div);
+        }
+
+        // --- IMPORT & EXPORT STACK JSON ---
+        function exportJSON() {
+            saveActiveFormToState();
+            const jsonStr = JSON.stringify(state, null, 2);
+            const safeName = (state.employeeName || 'Employee').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const filename = `SQCDP_Review_Stack_${safeName}.json`;
+
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importJSON(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const parsed = JSON.parse(evt.target.result);
+                    if (parsed.reviews && Array.isArray(parsed.reviews)) {
+                        state = parsed;
+                        document.getElementById('employeeName').value = state.employeeName || '';
+                        document.getElementById('managerName').value = state.managerName || '';
+                        document.getElementById('department').value = state.department || '';
+                        state.activeReviewId = state.reviews[0].id;
+                        saveToLocalStorage();
+                        renderTimeline();
+                        loadActiveReviewToForm();
+                        alert("Review stack loaded successfully!");
+                    } else {
+                        alert("Invalid JSON format. Expected a cumulative review stack file.");
+                    }
+                } catch (err) {
+                    alert("Error parsing JSON file.");
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+
+        // --- SQCDP TREND ANALYTICS MODAL ---
+        function toggleAnalyticsModal() {
+            const modal = document.getElementById('analyticsModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                renderTrendChart();
+            }
+        }
+
+        function statusToNumeric(status) {
+            switch (status) {
+                case 'Exceeds': return 4;
+                case 'Met': return 3;
+                case 'Needs Focus': return 2;
+                case 'At Risk': return 1;
+                default: return 3;
+            }
+        }
+
+        function renderTrendChart() {
+            saveActiveFormToState();
+            const chronologicalReviews = [...state.reviews].reverse(); // Oldest to newest for timeline chart
+
+            const labels = chronologicalReviews.map(r => `${r.quarter} ${r.year}`);
+            const safetyData = chronologicalReviews.map(r => statusToNumeric(r.sqcdp?.safety?.status));
+            const qualityData = chronologicalReviews.map(r => statusToNumeric(r.sqcdp?.quality?.status));
+            const costData = chronologicalReviews.map(r => statusToNumeric(r.sqcdp?.cost?.status));
+            const deliveryData = chronologicalReviews.map(r => statusToNumeric(r.sqcdp?.delivery?.status));
+            const peopleData = chronologicalReviews.map(r => statusToNumeric(r.sqcdp?.people?.status));
+
+            const ctx = document.getElementById('sqcdpTrendChart').getContext('2d');
+            
+            if (trendChart) trendChart.destroy();
+
+            trendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Safety', data: safetyData, borderColor: '#e11d48', backgroundColor: '#e11d48', tension: 0.2 },
+                        { label: 'Quality', data: qualityData, borderColor: '#2563eb', backgroundColor: '#2563eb', tension: 0.2 },
+                        { label: 'Cost', data: costData, borderColor: '#059669', backgroundColor: '#059669', tension: 0.2 },
+                        { label: 'Delivery', data: deliveryData, borderColor: '#d97706', backgroundColor: '#d97706', tension: 0.2 },
+                        { label: 'People', data: peopleData, borderColor: '#9333ea', backgroundColor: '#9333ea', tension: 0.2 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 1,
+                            max: 4,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function(val) {
+                                    if (val === 4) return 'Exceeds';
+                                    if (val === 3) return 'Met';
+                                    if (val === 2) return 'Focus';
+                                    if (val === 1) return 'At Risk';
+                                    return '';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Update stats summary text
+            const latest = state.reviews[0] || {};
+            document.getElementById('stat_safety').textContent = latest.sqcdp?.safety?.status || '--';
+            document.getElementById('stat_quality').textContent = latest.sqcdp?.quality?.status || '--';
+            document.getElementById('stat_cost').textContent = latest.sqcdp?.cost?.status || '--';
+            document.getElementById('stat_delivery').textContent = latest.sqcdp?.delivery?.status || '--';
+            document.getElementById('stat_people').textContent = latest.sqcdp?.people?.status || '--';
+        }
+
+        // --- STANDALONE INTERACTIVE HTML REPORT GENERATION ---
+        function generateStandaloneReport() {
+            saveActiveFormToState();
+            const reportData = JSON.stringify(state);
+
+            const reportHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Performance Review Report - ${escapeHtml(state.employeeName)}</title>
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="max-w-5xl mx-auto space-y-6">
+        
+        <!-- Report Header -->
+        <div class="bg-slate-900 text-white rounded-xl p-6 shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <span class="text-xs uppercase font-bold text-brand-400 tracking-wider">Performance & SQCDP History</span>
+                <h1 class="text-2xl font-bold mt-1">${escapeHtml(state.employeeName)}</h1>
+                <p class="text-xs text-slate-400">${escapeHtml(state.department)} &bull; Manager: ${escapeHtml(state.managerName)}</p>
+            </div>
+            <div class="text-right">
+                <span class="px-3 py-1 bg-brand-600 text-white text-xs font-semibold rounded-full">Interactive Summary</span>
+            </div>
+        </div>
+
+        <!-- Timeline Tabs -->
+        <div class="bg-white rounded-xl border border-slate-200 p-2 flex space-x-2 overflow-x-auto" id="reportTabs">
+            <!-- Tabs rendered here -->
+        </div>
+
+        <!-- Main Quarter Details -->
+        <div id="reportContent" class="space-y-6">
+            <!-- Selected Quarter content rendered here -->
+        </div>
+
+    </div>
+
+    <script>
+        const data = ${reportData};
+        let activeIdx = 0;
+
+        function renderReport() {
+            // Render Tabs
+            const tabsContainer = document.getElementById('reportTabs');
+            tabsContainer.innerHTML = '';
+            data.reviews.forEach((rev, idx) => {
+                const btn = document.createElement('button');
+                btn.onclick = () => { activeIdx = idx; renderReport(); };
+                btn.className = \`px-4 py-2 rounded-lg text-xs font-bold transition flex-shrink-0 \${
+                    idx === activeIdx 
+                    ? 'bg-blue-600 text-white shadow-sm' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }\`;
+                btn.textContent = \`\${rev.quarter} \${rev.year}\`;
+                tabsContainer.appendChild(btn);
+            });
+
+            // Render Content
+            const rev = data.reviews[activeIdx];
+            const content = document.getElementById('reportContent');
+            if (!rev) {
+                content.innerHTML = '<p class="text-slate-500">No review selected.</p>';
+                return;
+            }
+
+            const getBadgeClass = (status) => {
+                switch(status) {
+                    case 'Exceeds': return 'bg-purple-100 text-purple-800 border-purple-200';
+                    case 'Met': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                    case 'Needs Focus': return 'bg-amber-100 text-amber-800 border-amber-200';
+                    case 'At Risk': return 'bg-rose-100 text-rose-800 border-rose-200';
+                    default: return 'bg-slate-100 text-slate-800 border-slate-200';
+                }
+            };
+
+            content.innerHTML = \`
+                <!-- SQCDP Grid -->
+                <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-4 text-base border-b border-slate-100 pb-2">
+                        SQCDP Scorecard (\${rev.quarter} \${rev.year})
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                        \${['safety', 'quality', 'cost', 'delivery', 'people'].map(pillar => {
+                            const item = rev.sqcdp ? rev.sqcdp[pillar] : null;
+                            const st = item ? item.status : 'N/A';
+                            const nt = item ? item.notes : '';
+                            return \`
+                                <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                    <div class="font-bold text-xs uppercase text-slate-500 mb-1">\${pillar}</div>
+                                    <span class="inline-block px-2 py-0.5 text-[10px] font-bold rounded border \${getBadgeClass(st)}">\${st}</span>
+                                    <p class="text-[11px] text-slate-600 mt-2 italic">\${nt || 'No notes'}</p>
+                                </div>
+                            \`;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <!-- Last Quarter Objectives Evaluation -->
+                <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-3 text-base">Previous Objectives Outcome</h3>
+                    <div class="space-y-2">
+                        \${(rev.previousObjectives || []).map(o => \`
+                            <div class="p-3 bg-slate-50 rounded border border-slate-200 flex flex-col sm:flex-row justify-between gap-2 text-xs">
+                                <div>
+                                    <span class="font-bold text-slate-800">\${o.title || 'Objective'}</span>
+                                    <p class="text-slate-600 mt-1">\${o.notes || ''}</p>
+                                </div>
+                                <div>
+                                    <span class="px-2 py-1 font-semibold rounded \${o.isMet ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                                        \${o.isMet ? 'Met' : 'Not Met'}
+                                    </span>
+                                </div>
+                            </div>
+                        \`).join('') || '<p class="text-xs text-slate-400">No previous objectives recorded.</p>'}
+                    </div>
+                </div>
+
+                <!-- Highlights & Challenges -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                        <h4 class="font-bold text-emerald-800 text-sm mb-2"><i class="fa-solid fa-star text-emerald-500"></i> Highlights</h4>
+                        <p class="text-xs text-slate-700 whitespace-pre-wrap">\${rev.highlights || 'None entered.'}</p>
+                    </div>
+                    <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                        <h4 class="font-bold text-rose-800 text-sm mb-2"><i class="fa-solid fa-triangle-exclamation text-rose-500"></i> Struggles</h4>
+                        <p class="text-xs text-slate-700 whitespace-pre-wrap">\${rev.struggles || 'None entered.'}</p>
+                    </div>
+                </div>
+
+                <!-- Forward Objectives -->
+                <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-3 text-base">Agreed Forward Objectives</h3>
+                    <div class="space-y-2">
+                        \${(rev.nextObjectives || []).map(o => \`
+                            <div class="p-3 bg-slate-50 rounded border border-slate-200 text-xs">
+                                <div class="flex justify-between font-bold text-slate-800">
+                                    <span>\${o.title}</span>
+                                    <span class="text-slate-500 font-normal">Target: \${o.targetDate || 'TBD'}</span>
+                                </div>
+                                <p class="text-slate-600 mt-1">\${o.notes || ''}</p>
+                            </div>
+                        \`).join('') || '<p class="text-xs text-slate-400">No forward objectives set.</p>'}
+                    </div>
+                </div>
+            \`;
+        }
+
+        window.onload = renderReport;
+    <\/script>
+</body>
+</html>`;
+
+            const blob = new Blob([reportHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Report_${(state.employeeName || 'Employee').replace(/[^a-z0-9]/gi, '_')}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
