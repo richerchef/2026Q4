@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Skill Assessment & Capability Dashboard</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    
+    /* Custom Tooltip Styles */
+    .has-tooltip {
+      position: relative;
+    }
+    .tooltip-box {
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+      transform: translateY(4px);
+    }
+    .has-tooltip:hover .tooltip-box, .has-tooltip:focus-within .tooltip-box {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body class="h-full font-sans antialiased bg-slate-950 text-slate-100 flex flex-col min-h-screen">
+
+  <!-- ========================================================================= -->
+  <!-- TOP HEADER / NAV SWITCHER (EASY TO SPLIT INTO TWO STANDALONE HTML FILES)  -->
+  <!-- ========================================================================= -->
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center gap-3">
+          <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
+            <i class="fa-solid fa-layer-group text-xl"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-lg text-white leading-none">CapabilityIQ</h1>
+            <span class="text-xs text-slate-400">Skills Intelligence & Risk Management Tool</span>
+          </div>
+        </div>
+
+        <!-- View Navigation Switcher -->
+        <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <button id="tab-form" onclick="switchTab('form')" class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 text-blue-400 bg-slate-800 shadow">
+            <i class="fa-solid fa-clipboard-user"></i>
+            <span class="hidden sm:inline">Module 1: Self-Assessment Form</span>
+            <span class="sm:hidden">Form</span>
+          </button>
+          <button id="tab-dashboard" onclick="switchTab('dashboard')" class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span class="hidden sm:inline">Module 2: Capability & Risk Dashboard</span>
+            <span class="sm:hidden">Dashboard</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- ========================================================================= -->
+    <!-- MODULE 1: TEAM SKILL SELF-ASSESSMENT FORM (STANDALONE HTML SECTION 1)     -->
+    <!-- ========================================================================= -->
+    <section id="view-form" class="space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
+        
+        <!-- Header & Instructions -->
+        <div class="border-b border-slate-800 pb-6 mb-6">
+          <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+            <i class="fa-solid fa-user-pen text-blue-500"></i>
+            Team Member Skill Self-Assessment Form
+          </h2>
+          <p class="text-slate-400 mt-1 text-sm leading-relaxed">
+            Please evaluate your current proficiency across the core technical and operational capability areas below. 
+            Hover over any <i class="fa-solid fa-circle-info text-blue-400"></i> skill info icon or score button to view detailed criteria descriptors.
+          </p>
+        </div>
+
+        <form id="assessmentForm" onsubmit="handleFormSubmit(event)" class="space-y-8">
+          
+          <!-- 1. Basic Metadata Section -->
+          <div>
+            <h3 class="text-lg font-semibold text-blue-400 mb-4 flex items-center gap-2">
+              <i class="fa-solid fa-id-card"></i> 1. Basic Information & Horizon
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Full Name *</label>
+                <input type="text" id="memberName" required placeholder="e.g. Alex Morgan" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Job Title / Role *</label>
+                <input type="text" id="memberRole" required placeholder="e.g. Senior Data Scientist" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Seniority Level *</label>
+                <select id="memberSeniority" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition">
+                  <option value="Junior">Junior / Associate</option>
+                  <option value="Mid-Level" selected>Mid-Level</option>
+                  <option value="Senior">Senior</option>
+                  <option value="Lead / Principal">Lead / Principal</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Manager Email *</label>
+                <input type="email" id="managerEmail" required placeholder="manager@company.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition">
+              </div>
+            </div>
+
+            <!-- Retention & Departure Horizon Indicator -->
+            <div class="mt-4 p-4 bg-slate-950/80 rounded-xl border border-slate-800/80">
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                Retention / Career Timeline (Used for succession & team continuity planning)
+              </label>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label class="flex items-center gap-3 p-3 bg-slate-900 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+                  <input type="radio" name="departureHorizon" value="Low Risk (3+ yrs)" checked class="text-blue-600 focus:ring-0">
+                  <div class="text-xs">
+                    <span class="font-semibold text-slate-200 block">Stable (3+ Years)</span>
+                    <span class="text-slate-400">Plan to remain long-term</span>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 p-3 bg-slate-900 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+                  <input type="radio" name="departureHorizon" value="Medium Risk (1-3 yrs)" class="text-amber-500 focus:ring-0">
+                  <div class="text-xs">
+                    <span class="font-semibold text-slate-200 block">Transition (1-3 Years)</span>
+                    <span class="text-slate-400">Possible internal shift or change</span>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 p-3 bg-slate-900 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+                  <input type="radio" name="departureHorizon" value="High Risk (< 1 yr)" class="text-rose-500 focus:ring-0">
+                  <div class="text-xs">
+                    <span class="font-semibold text-slate-200 block">Departure (&lt; 1 Year)</span>
+                    <span class="text-slate-400">Retirement / Imminent transition</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Proficiency Rating Legend with Tooltips -->
+          <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+              <span class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-graduation-cap text-blue-400"></i> Skill Proficiency Rating Scale (0 to 5)
+              </span>
+              <span class="text-[11px] text-slate-400">Hover over any rating badge below to view detailed breakdown</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2 text-xs">
+              <!-- Rating 0 -->
+              <div class="has-tooltip bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-center cursor-help">
+                <div class="font-bold text-slate-400">Level 0</div>
+                <div class="text-[11px] text-slate-300">No Knowledge</div>
+                <div class="tooltip-box absolute left-0 right-0 top-full mt-2 p-3 bg-slate-900 border border-slate-700 rounded-xl text-left text-xs text-slate-300 shadow-2xl z-30 pointer-events-none">
+                  <b class="text-slate-200 block mb-1">Level 0: No Knowledge</b>
+                  No prior experience or theoretical awareness. Cannot perform tasks without complete training.
+                </div>
+              </div>
+
+              <!-- Rating 1 -->
+              <div class="has-tooltip bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-center cursor-help">
+                <div class="font-bold text-amber-400">Level 1</div>
+                <div class="text-[11px] text-slate-300">Novice / Awareness</div>
+                <div class="tooltip-box absolute left-0 right-0 top-full mt-2 p-3 bg-slate-900 border border-slate-700 rounded-xl text-left text-xs text-slate-300 shadow-2xl z-30 pointer-events-none">
+                  <b class="text-amber-400 block mb-1">Level 1: Novice / Basic Awareness</b>
+                  Basic theoretical understanding or minimal practical exposure. Requires step-by-step guidance.
+                </div>
+              </div>
+
+              <!-- Rating 2 -->
+              <div class="has-tooltip bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-center cursor-help">
+                <div class="font-bold text-yellow-400">Level 2</div>
+                <div class="text-[11px] text-slate-300">Advanced Beginner</div>
+                <div class="tooltip-box absolute left-0 right-0 top-full mt-2 p-3 bg-slate-900 border border-slate-700 rounded-xl text-left text-xs text-slate-300 shadow-2xl z-30 pointer-events-none">
+                  <b class="text-yellow-400 block mb-1">Level 2: Advanced Beginner</b>
+                  Can perform routine tasks independently with standard documentation. Requires supervision for complex problems.
+                </div>
+              </div>
+
+              <!-- Rating 3 -->
+              <div class="has-tooltip bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-center cursor-help">
+                <div class="font-bold text-blue-400">Level 3</div>
+                <div class="text-[11px] text-slate-300">Competent / Independent</div>
+                <div class="tooltip-box absolute left-0 right-0 top-full mt-2 p-3 bg-slate-900 border border-slate-700 rounded-xl text-left text-xs text-slate-300 shadow-2xl z-30 pointer-events-none">
+                  <b class="text-blue-400 block mb-1">Level 3: Competent / Independent</b>
+                  Fully capable of delivering day-to-day production tasks independently. Troubleshoots errors reliably without assistance.
+                </div>
+              </div>
+
+              <!-- Rating 4 -->
+              <div class="has-tooltip bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-center cursor-help">
+                <div class="font-bold text-indigo-400">Level 4</div>
+                <div class="text-[11px] text-slate-300">Proficient / Lead</div>
+                <div class="tooltip-box absolute left-0 right-0 top-full mt-2 p-3 bg-slate-900 border border-slate-700 rounded-xl text-left text-xs text-slate-300 shadow-2xl z-30 pointer-events-none">
+                  <b class="text-indigo-400 block mb-1">Level 4: Proficient / Team Lead</b>
+                  Deep expertise. Designs systems, establishes best practices, code reviews others, and leads technical initiatives.
+                </div>
+              </div>
+
+              <!-- Rating 5 -->
+              <div class="has-tooltip bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-center cursor-help">
+                <div class="font-bold text-emerald-400">Level 5</div>
+                <div class="text-[11px] text-slate-300">Expert / Mentors</div>
+                <div class="tooltip-box absolute left-0 right-0 top-full mt-2 p-3 bg-slate-900 border border-slate-700 rounded-xl text-left text-xs text-slate-300 shadow-2xl z-30 pointer-events-none">
+                  <b class="text-emerald-400 block mb-1">Level 5: Expert / "Wrote the Book"</b>
+                  Recognized organizational authority. Innovates architecture, solves novel high-complexity problems, and mentors senior staff.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Dynamic Skill Scoring Matrix with Tooltips -->
+          <div id="skillsFormContainer" class="space-y-8">
+            <!-- Dynamic skills injected by JavaScript with tooltips -->
+          </div>
+
+          <!-- Form Action Bar -->
+          <div class="border-t border-slate-800 pt-6 flex flex-wrap gap-4 items-center justify-between">
+            <p class="text-xs text-slate-400 max-w-md">
+              Submitting generates a clean JSON payload and creates a pre-formatted email to send to your manager.
+            </p>
+            <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-blue-600/30 flex items-center gap-2 transition active:scale-95">
+              <i class="fa-solid fa-paper-plane"></i>
+              Generate JSON & Send Email
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- MODULE 2: CAPABILITY & RISK DASHBOARD (STANDALONE HTML SECTION 2)          -->
+    <!-- ========================================================================= -->
+    <section id="view-dashboard" class="space-y-6 hidden">
+      <!-- Toolbar & Actions Bar -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+            Team Skill Capability & Risk Center
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">
+            Analyzing <span id="team-member-count" class="font-bold text-blue-400">0</span> team member self-assessments.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap gap-3 w-full md:w-auto">
+          <button onclick="openImportModal()" class="flex-1 md:flex-none bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium px-4 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-file-import text-blue-400"></i>
+            Import Member JSONs
+          </button>
+          <button onclick="resetToMockData()" class="bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 px-3 py-2.5 rounded-xl text-sm transition" title="Reset to Pre-loaded Mock Team Data">
+            <i class="fa-solid fa-rotate-left"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Key Metrics Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+          <div class="absolute right-3 top-3 text-slate-800 text-5xl font-black select-none pointer-events-none">
+            <i class="fa-solid fa-users"></i>
+          </div>
+          <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Active Team Roster</p>
+          <p id="metric-active-count" class="text-3xl font-extrabold text-white mt-2">0</p>
+          <p class="text-xs text-slate-500 mt-1"><span id="metric-departed-count" class="text-rose-400 font-medium">0</span> marked as simulated departed</p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+          <div class="absolute right-3 top-3 text-slate-800 text-5xl font-black select-none pointer-events-none">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Single Points of Failure</p>
+          <p id="metric-spof-count" class="text-3xl font-extrabold text-amber-400 mt-2">0</p>
+          <p class="text-xs text-slate-500 mt-1">Skills with &le; 1 proficient owner (&ge; Level 3)</p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+          <div class="absolute right-3 top-3 text-slate-800 text-5xl font-black select-none pointer-events-none">
+            <i class="fa-solid fa-person-walking-arrow-right"></i>
+          </div>
+          <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Retirement / Flight Risk</p>
+          <p id="metric-flight-risk" class="text-3xl font-extrabold text-rose-400 mt-2">0</p>
+          <p class="text-xs text-slate-500 mt-1">Members leaving within 1 year</p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+          <div class="absolute right-3 top-3 text-slate-800 text-5xl font-black select-none pointer-events-none">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
+          <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Upskill Potential Match</p>
+          <p id="metric-upskill-matches" class="text-3xl font-extrabold text-emerald-400 mt-2">0</p>
+          <p class="text-xs text-slate-500 mt-1">Interest matched to at-risk gaps</p>
+        </div>
+      </div>
+
+      <!-- Main Visualization & Analysis Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left 2 Cols: Domain Radar Chart & Skill Heatmap -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Domain Radar Chart -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <h3 class="text-base font-bold text-white mb-4 flex items-center justify-between">
+              <span class="flex items-center gap-2"><i class="fa-solid fa-chart-radar text-blue-400"></i> Domain Capability Coverage</span>
+              <span class="text-xs text-slate-400 font-normal">Average Team Skill Score (0–5)</span>
+            </h3>
+            <div class="relative w-full h-72 sm:h-80 flex items-center justify-center">
+              <canvas id="radarChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Skill Vulnerability Heatmap -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+              <div>
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-table-cells text-indigo-400"></i> Skill Capability Heatmap & SPOF Tracker
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">Highlights team vulnerabilities and single-person dependencies.</p>
+              </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="inline-flex items-center gap-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-1 rounded">
+                  <i class="fa-solid fa-triangle-exclamation text-xs"></i> 0 Owners (Gap)
+                </span>
+                <span class="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-1 rounded">
+                  <i class="fa-solid fa-triangle-exclamation text-xs"></i> 1 Owner (SPOF)
+                </span>
+              </div>
+            </div>
+
+            <div id="skillsBreakdownContainer" class="space-y-4">
+              <!-- Dynamically populated skill risk bars -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Col: Interactive What-If Simulator & Upskilling Matrix -->
+        <div class="space-y-6">
+          <!-- What-If Simulator Widget -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+              <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-vial-circle-check text-purple-400"></i>
+                "What-If" Departure Simulator
+              </h3>
+              <button onclick="clearSimulatedDepartures()" class="text-xs text-blue-400 hover:underline">Reset All</button>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">
+              Toggle team members as "Departed" (e.g., retirement or resignation) to instantly simulate skill gaps and capability drops.
+            </p>
+
+            <div id="whatIfTeamList" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+              <!-- Dynamically generated member checkboxes -->
+            </div>
+          </div>
+
+          <!-- Upskilling Matrix -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+              <i class="fa-solid fa-lightbulb text-amber-400"></i> Internal Upskilling Recommendation Match
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">
+              Matches high-risk team skill gaps with team members who explicitly requested training in those areas.
+            </p>
+
+            <div id="upskillMatchesList" class="space-y-3 max-h-80 overflow-y-auto pr-1">
+              <!-- Dynamic upskill recommendation cards -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Section: Automated Hiring Criteria Generator -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-4 mb-6 gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-user-plus text-emerald-400"></i>
+              Automated Job Description & Hiring Criteria Generator
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Generates recruitment priorities tailored to address your active team gaps and simulated loss of key staff.
+            </p>
+          </div>
+          <button onclick="copyHiringCriteria()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-2 self-start md:self-auto">
+            <i class="fa-regular fa-copy"></i>
+            Copy Recruitment Brief
+          </button>
+        </div>
+
+        <div id="hiringCriteriaOutput" class="bg-slate-950 p-5 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+          <!-- Dynamically generated job requirement bullets -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODALS & DIALOGS                                                          -->
+  <!-- ========================================================================= -->
+
+  <!-- Submission Output Modal -->
+  <div id="submissionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-circle-check text-emerald-400"></i> Self-Assessment JSON Compiled
+        </h3>
+        <button onclick="closeSubmissionModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <p class="text-sm text-slate-300">
+        Your assessment JSON has been generated. You can copy it directly or click to launch your default email app to send it to your manager.
+      </p>
+
+      <div class="relative">
+        <textarea id="jsonSubmissionText" readonly class="w-full h-48 bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-xs text-emerald-400 focus:outline-none focus:ring-1 focus:ring-blue-500 select-all"></textarea>
+      </div>
+
+      <div class="flex flex-wrap gap-3 justify-end pt-2">
+        <button onclick="copySubmissionJson()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium px-4 py-2 rounded-xl text-sm border border-slate-700 flex items-center gap-2 transition">
+          <i class="fa-regular fa-copy"></i> Copy JSON Payload
+        </button>
+        <button onclick="launchMailClient()" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 py-2 rounded-xl text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition">
+          <i class="fa-solid fa-envelope"></i> Open Email Client
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manager JSON Importer Modal -->
+  <div id="importModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-file-import text-blue-400"></i> Import Member JSON Data
+        </h3>
+        <button onclick="closeImportModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <p class="text-xs text-slate-300">
+        Paste a single member submission JSON, an array of submissions, or upload a <code>.json</code> file.
+      </p>
+
+      <div class="space-y-3">
+        <input type="file" id="jsonFileInput" accept=".json" onchange="handleFileUpload(event)" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer">
+
+        <div class="relative">
+          <textarea id="importJsonText" placeholder="Paste JSON text here..." class="w-full h-40 bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-200 focus:outline-none focus:border-blue-500"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center pt-2">
+        <span id="importErrorMsg" class="text-xs text-rose-400 hidden">Invalid JSON format!</span>
+        <div class="flex gap-2 ml-auto">
+          <button onclick="processImport(false)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2.5 rounded-xl border border-slate-700 transition">
+            Append to Team
+          </button>
+          <button onclick="processImport(true)" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow transition">
+            Replace Roster
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white border border-slate-700 px-4 py-3 rounded-xl shadow-2xl text-xs flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+    <span id="toastMsg">Action completed successfully</span>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT LOGIC & TAXONOMY DEFINITIONS                                    -->
+  <!-- ========================================================================= -->
+  <script>
+    // --- SKILL RATING DEFINITIONS (FOR TOOLTIPS) ---
+    const RATING_DESCRIPTIONS = {
+      0: { title: "Level 0: No Knowledge", desc: "No prior experience or exposure. Cannot execute tasks in this area." },
+      1: { title: "Level 1: Novice / Basic Awareness", desc: "Understands core concepts theoretically. Requires step-by-step guidance to execute." },
+      2: { title: "Level 2: Advanced Beginner", desc: "Can perform routine tasks using standard documentation. Needs supervision for non-standard issues." },
+      3: { title: "Level 3: Competent / Independent", desc: "Fully autonomous in daily production. Handles troubleshooting and standard delivery independently." },
+      4: { title: "Level 4: Proficient / Team Lead", desc: "High mastery. Leads technical design, performs code/architecture reviews, and sets standards." },
+      5: { title: "Level 5: Expert / 'Wrote the Book'", desc: "Recognized domain authority. Innovates solutions to novel complex problems and mentors seniors." }
+    };
+
+    // --- COMPLETE SKILL TAXONOMY WITH RICH TOOLTIPS ---
+    const SKILL_DOMAINS = [
+      {
+        id: "ds_ml",
+        title: "Data Science & Machine Learning",
+        skills: [
+          {
+            name: "Python Data Stack",
+            tooltip: "Proficiency in NumPy, Pandas, Scikit-learn, and numerical/data manipulation libraries."
+          },
+          {
+            name: "Machine Learning & MLOps",
+            tooltip: "Building, evaluating, tuning, and deploying ML models (MLflow, Model registries, tracking)."
+          },
+          {
+            name: "Statistical Analysis",
+            tooltip: "Hypothesis testing, probability distributions, regression modeling, and experimental design (A/B testing)."
+          },
+          {
+            name: "LLMs & GenAI",
+            tooltip: "Prompt engineering, RAG architecture, fine-tuning, and working with OpenAI/HuggingFace APIs."
+          },
+          {
+            name: "Data Visualization",
+            tooltip: "Communicating insights using Matplotlib, Seaborn, Tableau, PowerBI, or interactive web dashboards."
+          }
+        ]
+      },
+      {
+        id: "eng_cloud",
+        title: "Engineering & Cloud Infrastructure",
+        skills: [
+          {
+            name: "SQL & Data Modeling",
+            tooltip: "Writing complex queries, relational schema design, indexing, performance tuning, and normalization."
+          },
+          {
+            name: "Cloud Architecture (AWS/Azure)",
+            tooltip: "Designing scalable cloud services (IAM, VPC, S3, EC2, Lambda, Azure Blob, Kubernetes)."
+          },
+          {
+            name: "CI/CD Pipelines & DevOps",
+            tooltip: "Automating builds, testing, containerization (Docker), and deployment (GitHub Actions, Jenkins, Terraform)."
+          },
+          {
+            name: "API Development & Microservices",
+            tooltip: "Building robust REST/GraphQL APIs, web services, authentication, and microservice architecture."
+          },
+          {
+            name: "Data Engineering (Spark/ETL)",
+            tooltip: "Orchestrating large-scale data pipelines using Spark, Airflow, dbt, Snowflake, or Databricks."
+          }
+        ]
+      },
+      {
+        id: "agile_ops",
+        title: "Agile, Operations & Leadership",
+        skills: [
+          {
+            name: "Agile/Scrum Leadership",
+            tooltip: "Facilitating sprint ceremonies, backlog grooming, estimating velocity, and removing blockers."
+          },
+          {
+            name: "Project Management",
+            tooltip: "Scope planning, milestone tracking, resource management, risk mitigation, and delivery timeline."
+          },
+          {
+            name: "Stakeholder Communication",
+            tooltip: "Translating technical concepts for non-technical leadership and driving alignment across teams."
+          },
+          {
+            name: "System Architecture Design",
+            tooltip: "Designing resilient end-to-end technical architecture, component boundaries, and security models."
+          },
+          {
+            name: "Quality Assurance & Testing",
+            tooltip: "Writing unit tests, integration tests, automated test frameworks, and contract testing."
+          }
+        ]
+      },
+      {
+        id: "domain_soft",
+        title: "Domain & Soft Capabilities",
+        skills: [
+          {
+            name: "Business Domain Knowledge",
+            tooltip: "Understanding key industry business metrics, customer needs, unit economics, and domain logic."
+          },
+          {
+            name: "Problem Solving & Analysis",
+            tooltip: "Deconstructing ambiguous problems, root cause analysis, and logical structured decision making."
+          },
+          {
+            name: "Mentorship & Coaching",
+            tooltip: "Pairing with team members, conducting code/skill reviews, and growing junior talent."
+          },
+          {
+            name: "Technical Writing & Docs",
+            tooltip: "Creating clear technical specs, API documentation, system runbooks, and architectural RFCs."
+          }
+        ]
+      }
+    ];
+
+    // --- PRE-LOADED MOCK TEAM DATASET (8 Profiles) ---
+    const INITIAL_MOCK_TEAM = [
+      {
+        name: "Sarah Chen",
+        role: "Lead Data Scientist",
+        seniority: "Lead / Principal",
+        managerEmail: "manager@company.com",
+        departureHorizon: "Low Risk (3+ yrs)",
+        skills: {
+          "Python Data Stack": 5, "Machine Learning & MLOps": 5, "Statistical Analysis": 4, "LLMs & GenAI": 4,
+          "Data Visualization": 3, "SQL & Data Modeling": 4, "Cloud Architecture (AWS/Azure)": 3, "CI/CD Pipelines & DevOps": 2,
+          "API Development & Microservices": 2, "Data Engineering (Spark/ETL)": 3, "Agile/Scrum Leadership": 3, "Project Management": 4,
+          "Stakeholder Communication": 5, "System Architecture Design": 4, "Quality Assurance & Testing": 2, "Business Domain Knowledge": 4,
+          "Problem Solving & Analysis": 5, "Mentorship & Coaching": 5, "Technical Writing & Docs": 4
+        },
+        upskillInterest: ["CI/CD Pipelines & DevOps", "Cloud Architecture (AWS/Azure)"]
+      },
+      {
+        name: "David Miller",
+        role: "Senior Cloud & Data Engineer",
+        seniority: "Senior",
+        managerEmail: "manager@company.com",
+        departureHorizon: "High Risk (< 1 yr)", // Impending Departure Risk!
+        skills: {
+          "Python Data Stack": 3, "Machine Learning & MLOps": 2, "Statistical Analysis": 1, "LLMs & GenAI": 1,
+          "Data Visualization": 2, "SQL & Data Modeling": 5, "Cloud Architecture (AWS/Azure)": 5, "CI/CD Pipelines & DevOps": 5,
+          "API Development & Microservices": 4, "Data Engineering (Spark/ETL)": 5, "Agile/Scrum Leadership": 2, "Project Management": 2,
+          "Stakeholder Communication": 3, "System Architecture Design": 5, "Quality Assurance & Testing": 4, "Business Domain Knowledge": 3,
+          "Problem Solving & Analysis": 4, "Mentorship & Coaching": 4, "Technical Writing & Docs": 3
+        },
+        upskillInterest: ["LLMs & GenAI", "Machine Learning & MLOps"]
+      },
+      {
+        name: "Elena Rostova",
+        role: "Senior Scrum Master & PM",
+        seniority: "Senior",
+        managerEmail: "manager@company.com",
+        departureHorizon: "Low Risk (3+ yrs)",
+        skills: {
+          "Python Data Stack": 1, "Machine Learning & MLOps": 0, "Statistical Analysis": 2, "LLMs & GenAI": 1,
+          "Data Visualization": 3, "SQL & Data Modeling": 1, "Cloud Architecture (AWS/Azure)": 0, "CI/CD Pipelines & DevOps": 1,
+          "API Development & Microservices": 0, "Data Engineering (Spark/ETL)": 0, "Agile/Scrum Leadership": 5, "Project Management": 5,
+          "Stakeholder Communication": 5, "System Architecture Design": 1, "Quality Assurance & Testing": 3, "Business Domain Knowledge": 4,
+          "Problem Solving & Analysis": 4, "Mentorship & Coaching": 4, "Technical Writing & Docs": 5
+        },
+        upskillInterest: ["SQL & Data Modeling", "Data Visualization"]
+      },
+      {
+        name: "Marcus Vance",
+        role: "Mid-Level Data Engineer",
+        seniority: "Mid-Level",
+        managerEmail: "manager@company.com",
+        departureHorizon: "Medium Risk (1-3 yrs)",
+        skills: {
+          "Python Data Stack": 3, "Machine Learning & MLOps": 1, "Statistical Analysis": 2, "LLMs & GenAI": 1,
+          "Data Visualization": 2, "SQL & Data Modeling": 4, "Cloud Architecture (AWS/Azure)": 3, "CI/CD Pipelines & DevOps": 3,
+          "API Development & Microservices": 3, "Data Engineering (Spark/ETL)": 4, "Agile/Scrum Leadership": 2, "Project Management": 2,
+          "Stakeholder Communication": 2, "System Architecture Design": 2, "Quality Assurance & Testing": 3, "Business Domain Knowledge": 2,
+          "Problem Solving & Analysis": 3, "Mentorship & Coaching": 2, "Technical Writing & Docs": 3
+        },
+        upskillInterest: ["Cloud Architecture (AWS/Azure)", "CI/CD Pipelines & DevOps", "System Architecture Design"]
+      },
+      {
+        name: "Aisha Patel",
+        role: "ML Research Engineer",
+        seniority: "Mid-Level",
+        managerEmail: "manager@company.com",
+        departureHorizon: "Low Risk (3+ yrs)",
+        skills: {
+          "Python Data Stack": 4, "Machine Learning & MLOps": 4, "Statistical Analysis": 4, "LLMs & GenAI": 5,
+          "Data Visualization": 3, "SQL & Data Modeling": 2, "Cloud Architecture (AWS/Azure)": 2, "CI/CD Pipelines & DevOps": 2,
+          "API Development & Microservices": 3, "Data Engineering (Spark/ETL)": 2, "Agile/Scrum Leadership": 1, "Project Management": 2,
+          "Stakeholder Communication": 3, "System Architecture Design": 2, "Quality Assurance & Testing": 2, "Business Domain Knowledge": 2,
+          "Problem Solving & Analysis": 4, "Mentorship & Coaching": 3, "Technical Writing & Docs": 4
+        },
+        upskillInterest: ["Machine Learning & MLOps", "API Development & Microservices"]
+      },
+      {
+        name: "Tom Gallagher",
+        role: "Junior Data Analyst",
+        seniority: "Junior",
+        managerEmail: "manager@company.com",
+        departureHorizon: "Low Risk (3+ yrs)",
+        skills: {
+          "Python Data Stack": 2, "Machine Learning & MLOps": 1, "Statistical Analysis": 3, "LLMs & GenAI": 2,
+          "Data Visualization": 4, "SQL & Data Modeling": 3, "Cloud Architecture (AWS/Azure)": 1, "CI/CD Pipelines & DevOps": 0,
+          "API Development & Microservices": 1, "Data Engineering (Spark/ETL)": 1, "Agile/Scrum Leadership": 1, "Project Management": 2,
+          "Stakeholder Communication": 3, "System Architecture Design": 0, "Quality Assurance & Testing": 2, "Business Domain Knowledge": 3,
+          "Problem Solving & Analysis": 3, "Mentorship & Coaching": 1, "Technical Writing & Docs": 2
+        },
+        upskillInterest: ["Python Data Stack", "Statistical Analysis", "SQL & Data Modeling"]
+      },
+      {
+        name: "James Wilson",
+        role: "Principal Solutions Architect",
+        seniority: "Lead / Principal",
+        managerEmail: "manager@company.com",
+        departureHorizon: "High Risk (< 1 yr)", // Retirement Risk!
+        skills: {
+          "Python Data Stack": 2, "Machine Learning & MLOps": 2, "Statistical Analysis": 1, "LLMs & GenAI": 2,
+          "Data Visualization": 2, "SQL & Data Modeling": 4, "Cloud Architecture (AWS/Azure)": 5, "CI/CD Pipelines & DevOps": 4,
+          "API Development & Microservices": 5, "Data Engineering (Spark/ETL)": 3, "Agile/Scrum Leadership": 4, "Project Management": 4,
+          "Stakeholder Communication": 5, "System Architecture Design": 5, "Quality Assurance & Testing": 4, "Business Domain Knowledge": 5,
+          "Problem Solving & Analysis": 5, "Mentorship & Coaching": 5, "Technical Writing & Docs": 4
+        },
+        upskillInterest: ["LLMs & GenAI"]
+      },
+      {
+        name: "Chloe Zhang",
+        role: "Fullstack & QA Specialist",
+        seniority: "Mid-Level",
+        managerEmail: "manager@company.com",
+        departureHorizon: "Medium Risk (1-3 yrs)",
+        skills: {
+          "Python Data Stack": 2, "Machine Learning & MLOps": 0, "Statistical Analysis": 1, "LLMs & GenAI": 1,
+          "Data Visualization": 2, "SQL & Data Modeling": 3, "Cloud Architecture (AWS/Azure)": 2, "CI/CD Pipelines & DevOps": 3,
+          "API Development & Microservices": 4, "Data Engineering (Spark/ETL)": 2, "Agile/Scrum Leadership": 2, "Project Management": 3,
+          "Stakeholder Communication": 3, "System Architecture Design": 2, "Quality Assurance & Testing": 5, "Business Domain Knowledge": 2,
+          "Problem Solving & Analysis": 3, "Mentorship & Coaching": 2, "Technical Writing & Docs": 3
+        },
+        upskillInterest: ["API Development & Microservices", "CI/CD Pipelines & DevOps"]
+      }
+    ];
+
+    // --- APP STATE ---
+    let currentTeamData = [];
+    let departedMemberNames = new Set();
+    let radarChartInstance = null;
+    let generatedPayloadJson = "";
+
+    // --- INITIALIZATION ---
+    window.onload = function() {
+      renderSelfAssessmentForm();
+      resetToMockData();
+    };
+
+    // --- VIEW SWITCHING ---
+    function switchTab(tab) {
+      const formView = document.getElementById('view-form');
+      const dashView = document.getElementById('view-dashboard');
+      const tabFormBtn = document.getElementById('tab-form');
+      const tabDashBtn = document.getElementById('tab-dashboard');
+
+      if (tab === 'form') {
+        formView.classList.remove('hidden');
+        dashView.classList.add('hidden');
+        tabFormBtn.className = "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 text-blue-400 bg-slate-800 shadow";
+        tabDashBtn.className = "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
+      } else {
+        formView.classList.add('hidden');
+        dashView.classList.remove('hidden');
+        tabDashBtn.className = "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 text-blue-400 bg-slate-800 shadow";
+        tabFormBtn.className = "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
+        renderDashboard();
+      }
+    }
+
+    // --- MODULE 1: FORM RENDERER WITH TOOLTIPS ---
+    function renderSelfAssessmentForm() {
+      const container = document.getElementById('skillsFormContainer');
+      container.innerHTML = "";
+
+      SKILL_DOMAINS.forEach((domain, dIdx) => {
+        const groupEl = document.createElement('div');
+        groupEl.className = "bg-slate-950/60 rounded-xl border border-slate-800 p-5 space-y-4";
+
+        let skillsHtml = domain.skills.map((skillObj, sIdx) => {
+          const fieldId = `skill_${dIdx}_${sIdx}`;
+          const interestId = `interest_${dIdx}_${sIdx}`;
+
+          return `
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 bg-slate-900/90 rounded-xl border border-slate-800/80 hover:border-slate-700 transition">
+              
+              <!-- Skill Name + Info Tooltip -->
+              <div class="flex-1 space-y-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-sm text-slate-100">${skillObj.name}</span>
+                  
+                  <!-- Skill Definition Tooltip -->
+                  <div class="has-tooltip cursor-help inline-flex items-center">
+                    <i class="fa-solid fa-circle-info text-blue-400 text-xs"></i>
+                    <div class="tooltip-box absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-800 border border-slate-700 rounded-xl text-left text-xs text-slate-200 shadow-2xl z-30 pointer-events-none">
+                      <b class="text-blue-400 block mb-1">${skillObj.name} Description:</b>
+                      ${skillObj.tooltip}
+                    </div>
+                  </div>
+                </div>
+                
+                <p class="text-xs text-slate-400 leading-normal">${skillObj.tooltip}</p>
+
+                <!-- Upskill Interest Checkbox -->
+                <label class="inline-flex items-center gap-2 mt-1 cursor-pointer">
+                  <input type="checkbox" id="${interestId}" data-skill-name="${skillObj.name}" class="rounded bg-slate-950 border-slate-700 text-blue-600 focus:ring-0">
+                  <span class="text-xs text-blue-400 hover:text-blue-300 font-medium">I want to upskill / receive training in this area</span>
+                </label>
+              </div>
+
+              <!-- Rating Selection Buttons (0 to 5) with Individual Rating Tooltips -->
+              <div class="flex items-center gap-1.5 sm:gap-2 self-start lg:self-center">
+                ${[0, 1, 2, 3, 4, 5].map(score => {
+                  const ratingInfo = RATING_DESCRIPTIONS[score];
+                  return `
+                    <div class="has-tooltip">
+                      <label class="cursor-pointer">
+                        <input type="radio" name="${fieldId}" value="${score}" ${score === 0 ? 'checked' : ''} class="peer sr-only" data-skill-name="${skillObj.name}">
+                        <span class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-400 flex items-center justify-center peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-500 peer-checked:shadow-lg transition">
+                          ${score}
+                        </span>
+                      </label>
+                      
+                      <!-- Score Descriptor Tooltip -->
+                      <div class="tooltip-box absolute right-0 bottom-full mb-2 w-52 p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-left text-xs text-slate-200 shadow-2xl z-30 pointer-events-none">
+                        <b class="text-white block mb-0.5">${ratingInfo.title}</b>
+                        <span class="text-[11px] text-slate-300 block">${ratingInfo.desc}</span>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+
+            </div>
+          `;
+        }).join('');
+
+        groupEl.innerHTML = `
+          <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+            ${domain.title}
+          </h4>
+          <div class="space-y-3">
+            ${skillsHtml}
+          </div>
+        `;
+        container.appendChild(groupEl);
+      });
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+
+      const name = document.getElementById('memberName').value.trim();
+      const role = document.getElementById('memberRole').value.trim();
+      const seniority = document.getElementById('memberSeniority').value;
+      const managerEmail = document.getElementById('managerEmail').value.trim();
+      
+      const horizonEl = document.querySelector('input[name="departureHorizon"]:checked');
+      const departureHorizon = horizonEl ? horizonEl.value : "Low Risk (3+ yrs)";
+
+      const skillsObj = {};
+      const upskillInterest = [];
+
+      SKILL_DOMAINS.forEach((domain, dIdx) => {
+        domain.skills.forEach((skillObj, sIdx) => {
+          const scoreEl = document.querySelector(`input[name="skill_${dIdx}_${sIdx}"]:checked`);
+          const score = scoreEl ? parseInt(scoreEl.value, 10) : 0;
+          skillsObj[skillObj.name] = score;
+
+          const interestEl = document.getElementById(`interest_${dIdx}_${sIdx}`);
+          if (interestEl && interestEl.checked) {
+            upskillInterest.push(skillObj.name);
+          }
+        });
+      });
+
+      const submissionPayload = {
+        name,
+        role,
+        seniority,
+        managerEmail,
+        departureHorizon,
+        skills: skillsObj,
+        upskillInterest,
+        submittedAt: new Date().toISOString()
+      };
+
+      generatedPayloadJson = JSON.stringify(submissionPayload, null, 2);
+      document.getElementById('jsonSubmissionText').value = generatedPayloadJson;
+
+      // Automatically sync payload into the manager state
+      const existingIdx = currentTeamData.findIndex(m => m.name.toLowerCase() === name.toLowerCase());
+      if (existingIdx >= 0) {
+        currentTeamData[existingIdx] = submissionPayload;
+      } else {
+        currentTeamData.push(submissionPayload);
+      }
+
+      document.getElementById('submissionModal').classList.remove('hidden');
+      showToast("Form completed! Submission payload created.");
+    }
+
+    function closeSubmissionModal() {
+      document.getElementById('submissionModal').classList.add('hidden');
+    }
+
+    function copySubmissionJson() {
+      const textarea = document.getElementById('jsonSubmissionText');
+      textarea.select();
+      document.execCommand('copy');
+      showToast("JSON payload copied to clipboard!");
+    }
+
+    function launchMailClient() {
+      const name = document.getElementById('memberName').value.trim() || "Team Member";
+      const managerEmail = document.getElementById('managerEmail').value.trim();
+      const subject = encodeURIComponent(`Skill Assessment Submission - ${name}`);
+      const body = encodeURIComponent(
+        `Hi,\n\nHere is my completed skill assessment JSON payload for team capability analysis:\n\n` + 
+        generatedPayloadJson + 
+        `\n\nBest regards,\n${name}`
+      );
+
+      window.location.href = `mailto:${managerEmail}?subject=${subject}&body=${body}`;
+    }
+
+    // --- MODULE 2: DASHBOARD ENGINE ---
+    function resetToMockData() {
+      currentTeamData = JSON.parse(JSON.stringify(INITIAL_MOCK_TEAM));
+      departedMemberNames.clear();
+      renderDashboard();
+      showToast("Reset to sample 8-person team dataset.");
+    }
+
+    function renderDashboard() {
+      const activeMembers = currentTeamData.filter(m => !departedMemberNames.has(m.name));
+
+      document.getElementById('team-member-count').textContent = currentTeamData.length;
+      document.getElementById('metric-active-count').textContent = activeMembers.length;
+      document.getElementById('metric-departed-count').textContent = departedMemberNames.size;
+
+      const flightRiskCount = activeMembers.filter(m => m.departureHorizon && m.departureHorizon.includes('< 1 yr')).length;
+      document.getElementById('metric-flight-risk').textContent = flightRiskCount;
+
+      const allSkillNames = SKILL_DOMAINS.flatMap(d => d.skills.map(s => s.name));
+      let spofCount = 0;
+      const skillStats = {};
+
+      allSkillNames.forEach(skillName => {
+        let sum = 0;
+        let proficientOwners = [];
+
+        activeMembers.forEach(m => {
+          const score = m.skills[skillName] || 0;
+          sum += score;
+          if (score >= 3) { // Level 3+ is considered independent/proficient owner
+            proficientOwners.push({ name: m.name, score, horizon: m.departureHorizon });
+          }
+        });
+
+        const avg = activeMembers.length > 0 ? (sum / activeMembers.length).toFixed(1) : "0.0";
+        if (proficientOwners.length <= 1) {
+          spofCount++;
+        }
+
+        skillStats[skillName] = {
+          sum,
+          avg,
+          proficientCount: proficientOwners.length,
+          owners: proficientOwners
+        };
+      });
+
+      document.getElementById('metric-spof-count').textContent = spofCount;
+
+      renderRadarChart(activeMembers);
+      renderSkillBreakdownHeatmap(skillStats);
+      renderWhatIfSimulator();
+      renderUpskillOpportunityMatrix(skillStats, activeMembers);
+      renderHiringCriteriaGenerator(skillStats);
+    }
+
+    function renderRadarChart(activeMembers) {
+      const ctx = document.getElementById('radarChart').getContext('2d');
+      const labels = SKILL_DOMAINS.map(d => d.title);
+      
+      const domainAverages = SKILL_DOMAINS.map(domain => {
+        if (activeMembers.length === 0) return 0;
+        let sum = 0;
+        let count = 0;
+        domain.skills.forEach(skillObj => {
+          activeMembers.forEach(m => {
+            sum += (m.skills[skillObj.name] || 0);
+            count++;
+          });
+        });
+        return count > 0 ? (sum / activeMembers.length / domain.skills.length).toFixed(2) : 0;
+      });
+
+      if (radarChartInstance) {
+        radarChartInstance.destroy();
+      }
+
+      radarChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Average Skill Level',
+            data: domainAverages,
+            backgroundColor: 'rgba(59, 130, 246, 0.25)',
+            borderColor: '#3b82f6',
+            borderWidth: 2,
+            pointBackgroundColor: '#60a5fa',
+            pointBorderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+              grid: { color: 'rgba(255, 255, 255, 0.1)' },
+              pointLabels: { color: '#94a3b8', font: { size: 11, weight: 'bold' } },
+              ticks: { backdropColor: 'transparent', color: '#64748b', stepSize: 1 },
+              min: 0,
+              max: 5
+            }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function renderSkillBreakdownHeatmap(skillStats) {
+      const container = document.getElementById('skillsBreakdownContainer');
+      container.innerHTML = "";
+
+      SKILL_DOMAINS.forEach(domain => {
+        const groupEl = document.createElement('div');
+        groupEl.className = "space-y-2";
+
+        const header = document.createElement('h4');
+        header.className = "text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1";
+        header.textContent = domain.title;
+        groupEl.appendChild(header);
+
+        domain.skills.forEach(skillObj => {
+          const skillName = skillObj.name;
+          const stat = skillStats[skillName];
+          const isSpof = stat.proficientCount === 1;
+          const isCriticalGap = stat.proficientCount === 0;
+          const barPct = Math.min(100, Math.max(0, (parseFloat(stat.avg) / 5) * 100));
+
+          let statusBadge = "";
+          if (isCriticalGap) {
+            statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">0 OWNERS (HIGH GAP)</span>`;
+          } else if (isSpof) {
+            statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">1 OWNER (SPOF)</span>`;
+          } else {
+            statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${stat.proficientCount} Proficient Owners</span>`;
+          }
+
+          const itemEl = document.createElement('div');
+          itemEl.className = "p-3 bg-slate-950/70 rounded-xl border border-slate-800/80 space-y-2";
+          itemEl.innerHTML = `
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-semibold text-slate-200">${skillName}</span>
+              <div class="flex items-center gap-2">
+                ${statusBadge}
+                <span class="font-mono text-slate-300 font-bold">${stat.avg} / 5</span>
+              </div>
+            </div>
+            
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="h-full ${isCriticalGap ? 'bg-rose-500' : (isSpof ? 'bg-amber-400' : 'bg-blue-500')} transition-all duration-300" style="width: ${barPct}%"></div>
+            </div>
+
+            <div class="text-[11px] text-slate-400 flex flex-wrap gap-1 items-center">
+              <span class="text-slate-500">Proficient Owners (&ge; Level 3):</span>
+              ${stat.owners.length > 0 
+                ? stat.owners.map(o => `<span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-slate-300">${o.name} (${o.score})</span>`).join('') 
+                : '<span class="text-rose-400 font-medium">None</span>'}
+            </div>
+          `;
+          groupEl.appendChild(itemEl);
+        });
+
+        container.appendChild(groupEl);
+      });
+    }
+
+    function renderWhatIfSimulator() {
+      const container = document.getElementById('whatIfTeamList');
+      container.innerHTML = "";
+
+      currentTeamData.forEach(member => {
+        const isDeparted = departedMemberNames.has(member.name);
+        const isHighFlightRisk = member.departureHorizon && member.departureHorizon.includes('< 1 yr');
+
+        const item = document.createElement('label');
+        item.className = `flex items-center justify-between p-3 rounded-xl border transition cursor-pointer ${
+          isDeparted ? 'bg-rose-950/30 border-rose-800/60' : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
+        }`;
+
+        item.innerHTML = `
+          <div class="flex items-center gap-3">
+            <input type="checkbox" ${isDeparted ? 'checked' : ''} onchange="toggleMemberDeparture('${member.name}')" class="rounded bg-slate-900 border-slate-700 text-rose-600 focus:ring-0">
+            <div>
+              <p class="text-xs font-semibold ${isDeparted ? 'line-through text-slate-500' : 'text-slate-200'}">${member.name}</p>
+              <p class="text-[11px] text-slate-400">${member.role}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            ${isHighFlightRisk ? `<span class="inline-block text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded font-bold border border-rose-500/30">Imminent Risk</span>` : ''}
+            <p class="text-[10px] text-slate-500 mt-0.5">${member.seniority || 'Mid'}</p>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function toggleMemberDeparture(memberName) {
+      if (departedMemberNames.has(memberName)) {
+        departedMemberNames.delete(memberName);
+      } else {
+        departedMemberNames.add(memberName);
+      }
+      renderDashboard();
+    }
+
+    function clearSimulatedDepartures() {
+      departedMemberNames.clear();
+      renderDashboard();
+    }
+
+    function renderUpskillOpportunityMatrix(skillStats, activeMembers) {
+      const container = document.getElementById('upskillMatchesList');
+      container.innerHTML = "";
+      let matchCount = 0;
+
+      const atRiskSkills = Object.keys(skillStats).filter(s => skillStats[s].proficientCount <= 1);
+
+      atRiskSkills.forEach(skillName => {
+        activeMembers.forEach(m => {
+          const interests = m.upskillInterest || [];
+          const currentScore = m.skills[skillName] || 0;
+
+          if (interests.includes(skillName) && currentScore < 3) {
+            matchCount++;
+            const matchCard = document.createElement('div');
+            matchCard.className = "p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5";
+            matchCard.innerHTML = `
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-amber-400">${skillName}</span>
+                <span class="text-[10px] bg-amber-500/10 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/20">At Risk Need</span>
+              </div>
+              <p class="text-xs text-slate-300">
+                <b class="text-blue-400">${m.name}</b> (${m.role}) requested training.
+              </p>
+              <div class="text-[10px] text-slate-500 flex justify-between">
+                <span>Current Score: ${currentScore} / 5</span>
+                <span class="text-emerald-400 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> Training Candidate</span>
+              </div>
+            `;
+            container.appendChild(matchCard);
+          }
+        });
+      });
+
+      document.getElementById('metric-upskill-matches').textContent = matchCount;
+
+      if (matchCount === 0) {
+        container.innerHTML = `
+          <div class="p-4 text-center text-xs text-slate-500 bg-slate-950/50 rounded-xl border border-slate-800">
+            No upskilling requests match current single-point-of-failure skills.
+          </div>
+        `;
+      }
+    }
+
+    function renderHiringCriteriaGenerator(skillStats) {
+      const outputEl = document.getElementById('hiringCriteriaOutput');
+      const criticalGaps = Object.keys(skillStats).filter(s => skillStats[s].proficientCount === 0);
+      const spofGaps = Object.keys(skillStats).filter(s => skillStats[s].proficientCount === 1);
+
+      if (criticalGaps.length === 0 && spofGaps.length === 0) {
+        outputEl.textContent = "TEAM CAPABILITY IS OPTIMAL: No critical capability gaps or SPOFs detected in active roster.";
+        return;
+      }
+
+      let text = `=================================================================\n`;
+      text += `AUTOMATED HIRING & RECRUITMENT SPECIFICATION\n`;
+      text += `Generated based on active capability gaps and simulated departures\n`;
+      text += `=================================================================\n\n`;
+
+      if (criticalGaps.length > 0) {
+        text += `[CRITICAL RECRUITMENT REQUIREMENTS - ZERO COVERAGE GAPS]\n`;
+        criticalGaps.forEach(skill => {
+          text += ` • Mandatory Core Requirement: ${skill} (Target minimum rating: Level 4/5)\n`;
+        });
+        text += `\n`;
+      }
+
+      if (spofGaps.length > 0) {
+        text += `[SECONDARY RECRUITMENT REQUIREMENTS - SINGLE POINT OF FAILURE REDUNDANCY]\n`;
+        spofGaps.forEach(skill => {
+          const owner = skillStats[skill].owners[0];
+          text += ` • Desirable Redundancy Skill: ${skill} (Sole owner: ${owner ? owner.name : 'Unknown'})\n`;
+        });
+        text += `\n`;
+      }
+
+      text += `[TARGET CANDIDATE PROFILE BULLETS FOR JOB POSTING]\n`;
+      text += `• Primary technical focus: Proven production expertise in ${[...criticalGaps, ...spofGaps.slice(0, 2)].join(', ')}.\n`;
+      text += `• Ability to lead architecture initiatives and upskill junior/mid-level team members.\n`;
+      text += `• Strong domain expertise to mitigate single-person operational reliance.\n`;
+
+      outputEl.textContent = text;
+    }
+
+    function copyHiringCriteria() {
+      const text = document.getElementById('hiringCriteriaOutput').textContent;
+      const dummy = document.createElement('textarea');
+      document.body.appendChild(dummy);
+      dummy.value = text;
+      dummy.select();
+      document.execCommand('copy');
+      document.body.removeChild(dummy);
+      showToast("Hiring criteria copied!");
+    }
+
+    // --- JSON IMPORT MODAL HANDLERS ---
+    function openImportModal() {
+      document.getElementById('importModal').classList.remove('hidden');
+      document.getElementById('importErrorMsg').classList.add('hidden');
+      document.getElementById('importJsonText').value = "";
+    }
+
+    function closeImportModal() {
+      document.getElementById('importModal').classList.add('hidden');
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('importJsonText').value = e.target.result;
+      };
+      reader.readAsText(file);
+    }
+
+    function processImport(replaceExisting) {
+      const rawText = document.getElementById('importJsonText').value.trim();
+      const errorMsg = document.getElementById('importErrorMsg');
+
+      try {
+        const parsed = JSON.parse(rawText);
+        let itemsToAdd = [];
+
+        if (Array.isArray(parsed)) {
+          itemsToAdd = parsed;
+        } else if (typeof parsed === 'object' && parsed !== null && parsed.name) {
+          itemsToAdd = [parsed];
+        } else {
+          throw new Error("Invalid structure");
+        }
+
+        if (replaceExisting) {
+          currentTeamData = itemsToAdd;
+          departedMemberNames.clear();
+        } else {
+          itemsToAdd.forEach(item => {
+            const idx = currentTeamData.findIndex(m => m.name.toLowerCase() === item.name.toLowerCase());
+            if (idx >= 0) {
+              currentTeamData[idx] = item;
+            } else {
+              currentTeamData.push(item);
+            }
+          });
+        }
+
+        closeImportModal();
+        renderDashboard();
+        showToast(`Imported ${itemsToAdd.length} team profile(s).`);
+      } catch (err) {
+        errorMsg.classList.remove('hidden');
+      }
+    }
+
+    // --- TOAST NOTIFICATIONS ---
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = msg;
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
