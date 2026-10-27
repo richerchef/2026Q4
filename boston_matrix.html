@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Group Idea Collector & Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Matrix layout specifics */
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: 40px repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr) 40px;
+    }
+    
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+      }
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans text-slate-800 bg-slate-50 antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 no-print shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- App Title & Logo -->
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-brand-600 text-white rounded-xl shadow-md">
+            <i data-lucide="sticky-note" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-lg text-slate-900 leading-tight">Focus Group Idea Hub</h1>
+            <p class="text-xs text-slate-500">Effort vs. Impact Prioritization Dashboard</p>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex items-center bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200">
+          <button id="nav-dashboard-btn" onclick="switchTab('dashboard')" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 text-brand-700 bg-white shadow-sm">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>Dashboard & Matrix</span>
+          </button>
+          <button id="nav-entry-btn" onclick="switchTab('entry')" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 transition-all duration-150">
+            <i data-lucide="file-plus" class="w-4 h-4"></i>
+            <span>Data Entry</span>
+            <span id="idea-count-badge" class="ml-1 px-2 py-0.5 text-xs bg-slate-200 text-slate-700 rounded-full">0</span>
+          </button>
+        </nav>
+
+        <!-- Global Actions -->
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="exportJSON()" title="Export JSON" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Export</span>
+          </button>
+          <label title="Import JSON" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
+            <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+            <span>Import</span>
+            <input type="file" id="json-import-input" accept=".json" onchange="importJSON(event)" class="hidden">
+          </label>
+          <button onclick="window.print()" title="Print Summary" class="p-1.5 text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- VIEW 1: DASHBOARD / ANALYTICS -->
+    <section id="view-dashboard" class="space-y-6">
+
+      <!-- KPI Cards Header -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Ideas</p>
+            <h3 id="kpi-total" class="text-2xl font-bold text-slate-900 mt-1">0</h3>
+          </div>
+          <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <i data-lucide="lightbulb" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Approved (Yes)</p>
+            <h3 id="kpi-approved" class="text-2xl font-bold text-emerald-600 mt-1">0</h3>
+          </div>
+          <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+            <i data-lucide="check-circle" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Quick Wins</p>
+            <h3 id="kpi-quick-wins" class="text-2xl font-bold text-indigo-600 mt-1">0</h3>
+          </div>
+          <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+            <i data-lucide="zap" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Issues Covered</p>
+            <h3 id="kpi-issues" class="text-2xl font-bold text-amber-600 mt-1">0/10</h3>
+          </div>
+          <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
+            <i data-lucide="list-checks" class="w-6 h-6"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters & Controls Bar -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3 no-print">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2 font-semibold text-slate-800 text-sm">
+            <i data-lucide="filter" class="w-4 h-4 text-brand-600"></i>
+            <span>Interactive Filters & Search</span>
+          </div>
+          <button onclick="resetFilters()" class="text-xs text-brand-600 hover:text-brand-700 font-medium hover:underline flex items-center gap-1">
+            <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Clear Filters
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <!-- Search -->
+          <div class="relative">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="filter-search" placeholder="Search title or raiser..." oninput="applyFilters()" 
+              class="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+          </div>
+
+          <!-- Issue Number Filter -->
+          <select id="filter-issue" onchange="applyFilters()" class="py-2 px-3 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white">
+            <option value="ALL">All Issues (1-10)</option>
+            <option value="1">Issue #1</option>
+            <option value="2">Issue #2</option>
+            <option value="3">Issue #3</option>
+            <option value="4">Issue #4</option>
+            <option value="5">Issue #5</option>
+            <option value="6">Issue #6</option>
+            <option value="7">Issue #7</option>
+            <option value="8">Issue #8</option>
+            <option value="9">Issue #9</option>
+            <option value="10">Issue #10</option>
+          </select>
+
+          <!-- Issue Owner Filter -->
+          <select id="filter-owner" onchange="applyFilters()" class="py-2 px-3 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white">
+            <option value="ALL">All Owners</option>
+          </select>
+
+          <!-- Undertake Decision Filter -->
+          <select id="filter-decision" onchange="applyFilters()" class="py-2 px-3 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white">
+            <option value="ALL">All Decisions (Y / N)</option>
+            <option value="Y">Approved Only (Y)</option>
+            <option value="N">Declined Only (N)</option>
+          </select>
+
+          <!-- Quick Matrix Quadrant Filter -->
+          <select id="filter-matrix" onchange="applyFilters()" class="py-2 px-3 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white">
+            <option value="ALL">All Quadrants</option>
+            <option value="QUICK_WIN">Quick Wins (High Imp / Low Eff)</option>
+            <option value="MAJOR_PROJECT">Major Projects (High Imp / High Eff)</option>
+            <option value="FILL_IN">Fill-Ins (Low Imp / Low Eff)</option>
+            <option value="THANKLESS">Thankless Tasks (Low Imp / High Eff)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Main Visual Section: Effort vs Impact Matrix & List -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 3x3 Matrix Container (7 Cols) -->
+        <div class="lg:col-span-7 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="grid" class="w-5 h-5 text-brand-600"></i>
+                Effort vs. Impact Prioritization Matrix
+              </h2>
+              <p class="text-xs text-slate-500 mt-0.5">Click cells or items to filter results. Quick Wins highlighted in green.</p>
+            </div>
+          </div>
+
+          <!-- Matrix Board -->
+          <div class="relative w-full aspect-square sm:aspect-[4/3] max-h-[500px] border border-slate-300 rounded-lg bg-slate-50/50 p-2 flex flex-col">
+            
+            <!-- Y-Axis Label -->
+            <div class="absolute -left-7 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-bold text-slate-500 tracking-wider uppercase">
+              Impact &rarr;
+            </div>
+
+            <div class="grid grid-rows-3 grid-cols-3 gap-2 flex-1 w-full h-full">
+              
+              <!-- ROW 1: HIGH IMPACT -->
+              <!-- High Impact / Low Effort (QUICK WINS) -->
+              <div onclick="setCellFilter('High', 'Low')" class="matrix-cell cursor-pointer relative bg-emerald-50/80 hover:bg-emerald-100/80 border-2 border-emerald-400 border-dashed rounded-lg p-2 transition-all flex flex-col overflow-hidden group">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+                    <i data-lucide="sparkles" class="w-3 h-3 text-emerald-600"></i> Quick Wins
+                  </span>
+                  <span class="text-[10px] bg-emerald-200/80 text-emerald-800 font-bold px-1.5 py-0.5 rounded-full" id="cell-count-High-Low">0</span>
+                </div>
+                <div id="cell-items-High-Low" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+              </div>
+
+              <!-- High Impact / Medium Effort -->
+              <div onclick="setCellFilter('High', 'Medium')" class="matrix-cell cursor-pointer relative bg-blue-50/60 hover:bg-blue-100/60 border border-slate-200 rounded-lg p-2 transition-all flex flex-col overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-[10px] font-semibold text-slate-600 uppercase">High Imp / Med Eff</span>
+                  <span class="text-[10px] bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded-full" id="cell-count-High-Medium">0</span>
+                </div>
+                <div id="cell-items-High-Medium" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+              </div>
+
+              <!-- High Impact / High Effort (MAJOR PROJECTS) -->
+              <div onclick="setCellFilter('High', 'High')" class="matrix-cell cursor-pointer relative bg-purple-50/60 hover:bg-purple-100/60 border border-slate-200 rounded-lg p-2 transition-all flex flex-col overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-[10px] font-bold text-purple-800 uppercase">Major Projects</span>
+                  <span class="text-[10px] bg-purple-200/80 text-purple-800 font-bold px-1.5 py-0.5 rounded-full" id="cell-count-High-High">0</span>
+                </div>
+                <div id="cell-items-High-High" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+              </div>
+
+              <!-- ROW 2: MEDIUM IMPACT -->
+              <!-- Med Impact / Low Effort -->
+              <div onclick="setCellFilter('Medium', 'Low')" class="matrix-cell cursor-pointer relative bg-slate-100/60 hover:bg-slate-200/60 border border-slate-200 rounded-lg p-2 transition-all flex flex-col overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-[10px] font-semibold text-slate-600 uppercase">Med Imp / Low Eff</span>
+                  <span class="text-[10px] bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded-full" id="cell-count-Medium-Low">0</span>
+                </div>
+                <div id="cell-items-Medium-Low" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+              </div>
+
+              <!-- Med Impact / Med Effort -->
+              <div onclick="setCellFilter('Medium', 'Medium')" class="matrix-cell cursor-pointer relative bg-slate-100/60 hover:bg-slate-200/60 border border-slate-200 rounded-lg p-2 transition-all flex flex-col overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-[10px] font-semibold text-slate-600 uppercase">Med Imp / Med Eff</span>
+                  <span class="text-[10px] bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded-full" id="cell-count-Medium-Medium">0</span>
+                </div>
+                <div id="cell-items-Medium-Medium" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+              </div>
+
+              <!-- Med Impact / High Effort -->
+              <div onclick="setCellFilter('Medium', 'High')" class="matrix-cell cursor-pointer relative bg-slate-100/60 hover:bg-slate-200/60 border border-slate-200 rounded-lg p-2 transition-all flex flex-col overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-[10px] font-semibold text-slate-600 uppercase">Med Imp / High Eff</span>
+                  <span class="text-[10px] bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded-full" id="cell-count-Medium-High">0</span>
+                </div>
+                <div id="cell-items-Medium-High" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+              </div>
+
+              <!-- ROW 3: LOW IMPACT -->
+              <!-- Low Impact / Low Effort (FILL-INS) -->
+              <div onclick="setCellFilter('Low', 'Low')" class="matrix-cell cursor-pointer relative bg-amber-50/60 hover:bg-amber-100/60 border border-slate-200 rounded-lg p-2 transition-all flex flex-col overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-[10px] font-bold text-amber-800 uppercase">Fill-Ins</span>
+                  <span class="text-[10px] bg-amber-200/80 text-amber-800 font-bold px-1.5 py-0.5 rounded-full" id="cell-count-Low-Low">0</span>
+                </div>
+                <div id="cell-items-Low-Low" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+              </div>
+
+              <!-- Low Impact / Med Effort -->
+              <div onclick="setCellFilter('Low', 'Medium')" class="matrix-cell cursor-pointer relative bg-slate-100/60 hover:bg-slate-200/60 border border-slate-200 rounded-lg p-2 transition-all flex flex-col overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-[10px] font-semibold text-slate-600 uppercase">Low Imp / Med Eff</span>
+                  <span class="text-[10px] bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded-full" id="cell-count-Low-Medium">0</span>
+                </div>
+                <div id="cell-items-Low-Medium" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+              </div>
+
+              <!-- Low Impact / High Effort (THANKLESS TASKS) -->
+              <div onclick="setCellFilter('Low', 'High')" class="matrix-cell cursor-pointer relative bg-rose-50/60 hover:bg-rose-100/60 border border-slate-200 rounded-lg p-2 transition-all flex flex-col overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-[10px] font-bold text-rose-800 uppercase">Thankless Tasks</span>
+                  <span class="text-[10px] bg-rose-200/80 text-rose-800 font-bold px-1.5 py-0.5 rounded-full" id="cell-count-Low-High">0</span>
+                </div>
+                <div id="cell-items-Low-High" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+              </div>
+
+            </div>
+
+            <!-- X-Axis Label -->
+            <div class="text-center text-xs font-bold text-slate-500 uppercase tracking-wider mt-2">
+              Effort &rarr; (Low &rarr; Medium &rarr; High)
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtered Quick List View (5 Cols) -->
+        <div class="lg:col-span-5 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="list" class="w-4 h-4 text-brand-600"></i>
+              Filtered Ideas (<span id="filtered-count">0</span>)
+            </h3>
+            <span class="text-xs text-slate-400">Sorted by Impact</span>
+          </div>
+
+          <div id="filtered-ideas-list" class="flex-1 space-y-2.5 overflow-y-auto max-h-[500px] pr-1">
+            <!-- Dynamically Rendered -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Issue-by-Issue Accordion Breakdown (All 10 Issues) -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-bold text-slate-900 text-lg flex items-center gap-2">
+              <i data-lucide="folder-kanban" class="w-5 h-5 text-brand-600"></i>
+              Issue-by-Issue Summary Breakdown
+            </h2>
+            <p class="text-xs text-slate-500">Overview of all 10 department issues, owners, and proposed post-it solutions.</p>
+          </div>
+          <button onclick="toggleAllAccordions()" class="text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 px-3 py-1.5 rounded-lg transition-colors">
+            Toggle Expand / Collapse
+          </button>
+        </div>
+
+        <div id="issues-accordion-container" class="space-y-3">
+          <!-- Rendered dynamically for Issues 1-10 -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- VIEW 2: DATA ENTRY -->
+    <section id="view-entry" class="hidden space-y-6">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Post-it Note Form (5 Cols) -->
+        <div class="lg:col-span-5 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <h2 id="form-heading" class="font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="plus-circle" class="w-5 h-5 text-brand-600"></i>
+              Add New Post-It Idea
+            </h2>
+            <button id="cancel-edit-btn" onclick="resetForm()" class="hidden text-xs text-slate-500 hover:text-slate-800 font-medium">
+              Cancel Edit
+            </button>
+          </div>
+
+          <form id="idea-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+            <input type="hidden" id="idea-id" value="">
+
+            <!-- Issue Number & Owner Row -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Issue Number *</label>
+                <select id="input-issue-no" onchange="autoFillOwner()" required class="w-full text-xs py-2 px-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white">
+                  <option value="" disabled selected>Select Issue (1-10)</option>
+                  <option value="1">Issue 1: Internal Communication</option>
+                  <option value="2">Issue 2: Software Tooling & Tech</option>
+                  <option value="3">Issue 3: Onboarding & Training</option>
+                  <option value="4">Issue 4: Workload & Staffing</option>
+                  <option value="5">Issue 5: Cross-Dept Alignment</option>
+                  <option value="6">Issue 6: Customer Feedback Loop</option>
+                  <option value="7">Issue 7: Process Documentation</option>
+                  <option value="8">Issue 8: Office Environment & Remote</option>
+                  <option value="9">Issue 9: Budget & Resource Allocation</option>
+                  <option value="10">Issue 10: Career Growth & Reviews</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Issue Owner *</label>
+                <input type="text" id="input-owner" placeholder="e.g. Sarah Jenkins" required
+                  class="w-full text-xs py-2 px-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+              </div>
+            </div>
+
+            <!-- Solution Title -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Solution Title (Post-It Idea) *</label>
+              <textarea id="input-title" rows="2" placeholder="e.g. Implement weekly 15-min syncs across teams" required
+                class="w-full text-xs py-2 px-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 resize-none"></textarea>
+            </div>
+
+            <!-- Raiser Name -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Name of Raiser *</label>
+              <input type="text" id="input-raiser" placeholder="e.g. Alex Rivera" required
+                class="w-full text-xs py-2 px-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+            </div>
+
+            <!-- Predicted Impact & Effort -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Predicted Impact *</label>
+                <select id="input-impact" required class="w-full text-xs py-2 px-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white">
+                  <option value="Low">Low</option>
+                  <option value="Medium" selected>Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Predicted Effort *</label>
+                <select id="input-effort" required class="w-full text-xs py-2 px-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white">
+                  <option value="Low">Low</option>
+                  <option value="Medium" selected>Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Undertake Idea Switch -->
+            <div class="pt-2">
+              <label class="block text-xs font-semibold text-slate-700 mb-2">Group Consensus: Undertake Idea?</label>
+              <div class="flex items-center gap-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="input-undertake" value="Y" checked class="text-brand-600 focus:ring-brand-500 h-4 w-4">
+                  <span class="text-xs font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 flex items-center gap-1">
+                    <i data-lucide="check" class="w-3.5 h-3.5"></i> Yes (Approve)
+                  </span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="input-undertake" value="N" class="text-slate-600 focus:ring-slate-500 h-4 w-4">
+                  <span class="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 flex items-center gap-1">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i> No (Decline)
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Submit Button & Clear -->
+            <div class="flex items-center gap-2 pt-3">
+              <button type="submit" id="submit-btn" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 px-4 rounded-lg text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                <span>Save Post-It Idea</span>
+              </button>
+              <button type="button" onclick="resetForm()" class="px-3 py-2 border border-slate-300 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50">
+                Clear Form
+              </button>
+            </div>
+          </form>
+
+          <!-- Utilities / Presets -->
+          <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Data Operations:</span>
+            <div class="flex gap-2">
+              <button onclick="loadSampleData()" class="text-brand-600 hover:underline font-medium">Load Demo Data</button>
+              <span>•</span>
+              <button onclick="clearAllData()" class="text-rose-600 hover:underline font-medium">Clear All</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table View of Entered Data (7 Cols) -->
+        <div class="lg:col-span-7 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="font-bold text-slate-900 flex items-center gap-2">
+                  <i data-lucide="table" class="w-5 h-5 text-brand-600"></i>
+                  All Registered Ideas
+                </h2>
+                <p class="text-xs text-slate-500">Manage, edit, or remove post-it ideas collected from the group.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="exportJSON()" class="text-xs text-slate-600 hover:text-slate-900 bg-slate-100 px-2.5 py-1.5 rounded-md font-medium flex items-center gap-1">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i> Export
+                </button>
+              </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="overflow-x-auto border border-slate-200 rounded-lg max-h-[520px] overflow-y-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead class="bg-slate-50 text-slate-600 font-semibold sticky top-0 border-b border-slate-200 z-10">
+                  <tr>
+                    <th class="py-2.5 px-3">Issue</th>
+                    <th class="py-2.5 px-3">Solution Title</th>
+                    <th class="py-2.5 px-3">Raiser</th>
+                    <th class="py-2.5 px-3">Impact / Effort</th>
+                    <th class="py-2.5 px-3 text-center">Undertake</th>
+                    <th class="py-2.5 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="ideas-table-body" class="divide-y divide-slate-100">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mt-4 text-right text-xs text-slate-400">
+            Autosaved to local browser cache.
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // Global State
+    let ideas = [];
+    let currentFilter = {
+      search: '',
+      issue: 'ALL',
+      owner: 'ALL',
+      decision: 'ALL',
+      matrix: 'ALL',
+      cellImpact: null,
+      cellEffort: null
+    };
+
+    // Default Owners Mapped to 10 Issues
+    const DEFAULT_ISSUES = {
+      "1": { name: "Internal Communication", owner: "Sarah Jenkins" },
+      "2": { name: "Software Tooling & Tech", owner: "Marcus Chen" },
+      "3": { name: "Onboarding & Training", owner: "Elena Rostova" },
+      "4": { name: "Workload & Staffing", owner: "David Kim" },
+      "5": { name: "Cross-Dept Alignment", owner: "Amanda Lewis" },
+      "6": { name: "Customer Feedback Loop", owner: "Robert Vance" },
+      "7": { name: "Process Documentation", owner: "Priya Patel" },
+      "8": { name: "Office Environment & Remote", owner: "Tom Walsh" },
+      "9": { name: "Budget & Resource Allocation", owner: "Jessica Taylor" },
+      "10": { name: "Career Growth & Reviews", owner: "Carlos Mendez" }
+    };
+
+    // Sample Demo Data
+    const SAMPLE_IDEAS = [
+      { id: '1', issueNo: '1', issueOwner: 'Sarah Jenkins', title: 'Implement bi-weekly 15-min async Slack updates', raiser: 'Alex R.', impact: 'High', effort: 'Low', undertake: 'Y' },
+      { id: '2', issueNo: '1', issueOwner: 'Sarah Jenkins', title: 'Overhaul intranet knowledge base structure', raiser: 'Claire M.', impact: 'Medium', effort: 'High', undertake: 'Y' },
+      { id: '3', issueNo: '2', issueOwner: 'Marcus Chen', title: 'Standardize Figma design system plugins', raiser: 'Marcus C.', impact: 'High', effort: 'Low', undertake: 'Y' },
+      { id: '4', issueNo: '2', issueOwner: 'Marcus Chen', title: 'Migrate legacy database to AWS cloud', raiser: 'Dan B.', impact: 'High', effort: 'High', undertake: 'N' },
+      { id: '5', issueNo: '3', issueOwner: 'Elena Rostova', title: 'Create interactive buddy checklist for week 1', raiser: 'Sophie T.', impact: 'High', effort: 'Low', undertake: 'Y' },
+      { id: '6', issueNo: '4', issueOwner: 'David Kim', title: 'Automate weekly status report generation', raiser: 'Liam K.', impact: 'High', effort: 'Low', undertake: 'Y' },
+      { id: '7', issueNo: '5', issueOwner: 'Amanda Lewis', title: 'Monthly joint product & marketing syncs', raiser: 'Rachel O.', impact: 'Medium', effort: 'Medium', undertake: 'Y' },
+      { id: '8', issueNo: '6', issueOwner: 'Robert Vance', title: 'Embed feedback pop-up directly in web dashboard', raiser: 'Kevin N.', impact: 'High', effort: 'Medium', undertake: 'Y' },
+      { id: '9', issueNo: '7', issueOwner: 'Priya Patel', title: 'Centralize standard operating procedures in Notion', raiser: 'Priya P.', impact: 'Medium', effort: 'Low', undertake: 'Y' },
+      { id: '10', issueNo: '8', issueOwner: 'Tom Walsh', title: 'Upgrade ergonomic desk chairs in main office', raiser: 'Chris L.', impact: 'Low', effort: 'Medium', undertake: 'N' },
+      { id: '11', issueNo: '9', issueOwner: 'Jessica Taylor', title: 'Reallocate quarterly software subscription seats', raiser: 'Jessica T.', impact: 'Low', effort: 'Low', undertake: 'Y' },
+      { id: '12', issueNo: '10', issueOwner: 'Carlos Mendez', title: 'Publish transparent engineering matrix & rubrics', raiser: 'Carlos M.', impact: 'High', effort: 'Medium', undertake: 'Y' }
+    ];
+
+    // Initialization
+    window.onload = function() {
+      lucide.createIcons();
+      loadFromLocalStorage();
+      if (ideas.length === 0) {
+        ideas = [...SAMPLE_IDEAS];
+        saveToLocalStorage();
+      }
+      populateOwnerFilter();
+      renderAllViews();
+    };
+
+    // Tab Switching
+    function switchTab(tab) {
+      const dashboardView = document.getElementById('view-dashboard');
+      const entryView = document.getElementById('view-entry');
+      const dashBtn = document.getElementById('nav-dashboard-btn');
+      const entryBtn = document.getElementById('nav-entry-btn');
+
+      if (tab === 'dashboard') {
+        dashboardView.classList.remove('hidden');
+        entryView.classList.add('hidden');
+        dashBtn.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 text-brand-700 bg-white shadow-sm";
+        entryBtn.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 transition-all duration-150";
+      } else {
+        dashboardView.classList.add('hidden');
+        entryView.classList.remove('hidden');
+        entryBtn.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 text-brand-700 bg-white shadow-sm";
+        dashBtn.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 transition-all duration-150";
+      }
+    }
+
+    // Auto fill issue owner based on selection
+    function autoFillOwner() {
+      const issueNo = document.getElementById('input-issue-no').value;
+      const ownerInput = document.getElementById('input-owner');
+      if (DEFAULT_ISSUES[issueNo] && !ownerInput.value) {
+        ownerInput.value = DEFAULT_ISSUES[issueNo].owner;
+      }
+    }
+
+    // Storage Handling
+    function saveToLocalStorage() {
+      try {
+        localStorage.setItem('focus_group_ideas', JSON.stringify(ideas));
+      } catch (e) {
+        console.error('Failed to save to localStorage', e);
+      }
+    }
+
+    function loadFromLocalStorage() {
+      try {
+        const stored = localStorage.getItem('focus_group_ideas');
+        if (stored) {
+          ideas = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.error('Failed to load from localStorage', e);
+      }
+    }
+
+    // Data Form Handling
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      
+      const idInput = document.getElementById('idea-id').value;
+      const issueNo = document.getElementById('input-issue-no').value;
+      const issueOwner = document.getElementById('input-owner').value.trim();
+      const title = document.getElementById('input-title').value.trim();
+      const raiser = document.getElementById('input-raiser').value.trim();
+      const impact = document.getElementById('input-impact').value;
+      const effort = document.getElementById('input-effort').value;
+      const undertake = document.querySelector('input[name="input-undertake"]:checked').value;
+
+      if (!issueNo || !title || !raiser || !issueOwner) {
+        showToast('Please fill out all required fields.', 'error');
+        return;
+      }
+
+      if (idInput) {
+        // Edit existing
+        const index = ideas.findIndex(i => i.id === idInput);
+        if (index !== -1) {
+          ideas[index] = { id: idInput, issueNo, issueOwner, title, raiser, impact, effort, undertake };
+          showToast('Idea updated successfully!');
+        }
+      } else {
+        // Create new
+        const newIdea = {
+          id: Date.now().toString(),
+          issueNo,
+          issueOwner,
+          title,
+          raiser,
+          impact,
+          effort,
+          undertake
+        };
+        ideas.push(newIdea);
+        showToast('New Post-It Idea saved!');
+      }
+
+      saveToLocalStorage();
+      populateOwnerFilter();
+      renderAllViews();
+      resetForm();
+    }
+
+    function editIdea(id) {
+      const idea = ideas.find(i => i.id === id);
+      if (!idea) return;
+
+      document.getElementById('idea-id').value = idea.id;
+      document.getElementById('input-issue-no').value = idea.issueNo;
+      document.getElementById('input-owner').value = idea.issueOwner;
+      document.getElementById('input-title').value = idea.title;
+      document.getElementById('input-raiser').value = idea.raiser;
+      document.getElementById('input-impact').value = idea.impact;
+      document.getElementById('input-effort').value = idea.effort;
+      
+      const radios = document.querySelectorAll('input[name="input-undertake"]');
+      radios.forEach(r => r.checked = (r.value === idea.undertake));
+
+      document.getElementById('form-heading').innerText = 'Edit Post-It Idea';
+      document.getElementById('submit-btn').innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> <span>Update Idea</span>`;
+      document.getElementById('cancel-edit-btn').classList.remove('hidden');
+      lucide.createIcons();
+
+      switchTab('entry');
+    }
+
+    function deleteIdea(id) {
+      if (confirm('Are you sure you want to remove this idea?')) {
+        ideas = ideas.filter(i => i.id !== id);
+        saveToLocalStorage();
+        populateOwnerFilter();
+        renderAllViews();
+        showToast('Idea deleted.');
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('idea-id').value = '';
+      document.getElementById('idea-form').reset();
+      document.getElementById('form-heading').innerText = 'Add New Post-It Idea';
+      document.getElementById('submit-btn').innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> <span>Save Post-It Idea</span>`;
+      document.getElementById('cancel-edit-btn').classList.add('hidden');
+      lucide.createIcons();
+    }
+
+    function clearAllData() {
+      if (confirm('Are you sure you want to clear ALL post-it ideas? This action cannot be undone.')) {
+        ideas = [];
+        saveToLocalStorage();
+        populateOwnerFilter();
+        renderAllViews();
+        showToast('All data cleared.');
+      }
+    }
+
+    function loadSampleData() {
+      ideas = [...SAMPLE_IDEAS];
+      saveToLocalStorage();
+      populateOwnerFilter();
+      renderAllViews();
+      showToast('Loaded sample dataset!');
+    }
+
+    // JSON Import/Export
+    function exportJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(ideas, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `focus_group_ideas_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Exported JSON successfully!');
+    }
+
+    function importJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          if (Array.isArray(importedData)) {
+            ideas = importedData;
+            saveToLocalStorage();
+            populateOwnerFilter();
+            renderAllViews();
+            showToast(`Imported ${ideas.length} ideas!`);
+          } else {
+            showToast('Invalid JSON format.', 'error');
+          }
+        } catch (err) {
+          showToast('Error reading JSON file.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Filter Logic
+    function populateOwnerFilter() {
+      const ownerSelect = document.getElementById('filter-owner');
+      const owners = [...new Set(ideas.map(i => i.issueOwner).filter(Boolean))];
+      
+      ownerSelect.innerHTML = `<option value="ALL">All Owners</option>` + 
+        owners.map(o => `<option value="${o}">${o}</option>`).join('');
+    }
+
+    function applyFilters() {
+      currentFilter.search = document.getElementById('filter-search').value.toLowerCase().trim();
+      currentFilter.issue = document.getElementById('filter-issue').value;
+      currentFilter.owner = document.getElementById('filter-owner').value;
+      currentFilter.decision = document.getElementById('filter-decision').value;
+      currentFilter.matrix = document.getElementById('filter-matrix').value;
+      
+      renderDashboard();
+    }
+
+    function resetFilters() {
+      document.getElementById('filter-search').value = '';
+      document.getElementById('filter-issue').value = 'ALL';
+      document.getElementById('filter-owner').value = 'ALL';
+      document.getElementById('filter-decision').value = 'ALL';
+      document.getElementById('filter-matrix').value = 'ALL';
+      currentFilter.cellImpact = null;
+      currentFilter.cellEffort = null;
+      applyFilters();
+    }
+
+    function setCellFilter(impact, effort) {
+      if (currentFilter.cellImpact === impact && currentFilter.cellEffort === effort) {
+        currentFilter.cellImpact = null;
+        currentFilter.cellEffort = null;
+      } else {
+        currentFilter.cellImpact = impact;
+        currentFilter.cellEffort = effort;
+      }
+      renderDashboard();
+    }
+
+    function getFilteredIdeas() {
+      return ideas.filter(idea => {
+        // Search
+        if (currentFilter.search) {
+          const matchTitle = idea.title.toLowerCase().includes(currentFilter.search);
+          const matchRaiser = idea.raiser.toLowerCase().includes(currentFilter.search);
+          if (!matchTitle && !matchRaiser) return false;
+        }
+
+        // Issue No
+        if (currentFilter.issue !== 'ALL' && idea.issueNo !== currentFilter.issue) return false;
+
+        // Owner
+        if (currentFilter.owner !== 'ALL' && idea.issueOwner !== currentFilter.owner) return false;
+
+        // Decision
+        if (currentFilter.decision !== 'ALL' && idea.undertake !== currentFilter.decision) return false;
+
+        // Matrix Quadrant Filter dropdown
+        if (currentFilter.matrix !== 'ALL') {
+          if (currentFilter.matrix === 'QUICK_WIN' && !(idea.impact === 'High' && idea.effort === 'Low')) return false;
+          if (currentFilter.matrix === 'MAJOR_PROJECT' && !(idea.impact === 'High' && idea.effort === 'High')) return false;
+          if (currentFilter.matrix === 'FILL_IN' && !(idea.impact === 'Low' && idea.effort === 'Low')) return false;
+          if (currentFilter.matrix === 'THANKLESS' && !(idea.impact === 'Low' && idea.effort === 'High')) return false;
+        }
+
+        // Specific Matrix Cell Click Filter
+        if (currentFilter.cellImpact && currentFilter.cellEffort) {
+          if (idea.impact !== currentFilter.cellImpact || idea.effort !== currentFilter.cellEffort) return false;
+        }
+
+        return true;
+      });
+    }
+
+    // Render Master Function
+    function renderAllViews() {
+      document.getElementById('idea-count-badge').innerText = ideas.length;
+      renderTable();
+      renderDashboard();
+    }
+
+    // Render Data Entry Table
+    function renderTable() {
+      const tbody = document.getElementById('ideas-table-body');
+      
+      if (ideas.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">No ideas recorded yet. Use the form to add post-its or load demo data.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = ideas.map(item => `
+        <tr class="hover:bg-slate-50/80 transition-colors">
+          <td class="py-2.5 px-3 whitespace-nowrap">
+            <span class="font-bold text-slate-900">#${item.issueNo}</span>
+            <div class="text-[10px] text-slate-400">${item.issueOwner || 'Unassigned'}</div>
+          </td>
+          <td class="py-2.5 px-3 font-medium text-slate-800 max-w-xs truncate" title="${item.title}">
+            ${item.title}
+          </td>
+          <td class="py-2.5 px-3 text-slate-600 whitespace-nowrap">
+            ${item.raiser}
+          </td>
+          <td class="py-2.5 px-3 whitespace-nowrap">
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.impact, 'impact')}">
+              Imp: ${item.impact}
+            </span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.effort, 'effort')}">
+              Eff: ${item.effort}
+            </span>
+          </td>
+          <td class="py-2.5 px-3 text-center whitespace-nowrap">
+            ${item.undertake === 'Y' 
+              ? `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-full text-[10px]">YES</span>`
+              : `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 font-bold rounded-full text-[10px]">NO</span>`}
+          </td>
+          <td class="py-2.5 px-3 text-right whitespace-nowrap space-x-1">
+            <button onclick="editIdea('${item.id}')" class="p-1 text-slate-500 hover:text-brand-600 rounded">
+              <i data-lucide="edit-3" class="w-4 h-4"></i>
+            </button>
+            <button onclick="deleteIdea('${item.id}')" class="p-1 text-slate-500 hover:text-rose-600 rounded">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    // Render Dashboard & Matrix
+    function renderDashboard() {
+      const filtered = getFilteredIdeas();
+
+      // Update KPIs
+      document.getElementById('kpi-total').innerText = ideas.length;
+      document.getElementById('kpi-approved').innerText = ideas.filter(i => i.undertake === 'Y').length;
+      document.getElementById('kpi-quick-wins').innerText = ideas.filter(i => i.impact === 'High' && i.effort === 'Low' && i.undertake === 'Y').length;
+      
+      const uniqueIssues = new Set(ideas.map(i => i.issueNo)).size;
+      document.getElementById('kpi-issues').innerText = `${uniqueIssues}/10`;
+
+      // Render Matrix Cells
+      const impacts = ['High', 'Medium', 'Low'];
+      const efforts = ['Low', 'Medium', 'High'];
+
+      impacts.forEach(imp => {
+        efforts.forEach(eff => {
+          const cellContainer = document.getElementById(`cell-items-${imp}-${eff}`);
+          const countBadge = document.getElementById(`cell-count-${imp}-${eff}`);
+          
+          const cellIdeas = filtered.filter(i => i.impact === imp && i.effort === eff);
+          countBadge.innerText = cellIdeas.length;
+
+          if (cellIdeas.length === 0) {
+            cellContainer.innerHTML = `<div class="text-[10px] text-slate-400 italic py-2 text-center">Empty</div>`;
+          } else {
+            cellContainer.innerHTML = cellIdeas.map(i => `
+              <div class="p-1.5 rounded bg-white shadow-xs border ${i.undertake === 'Y' ? 'border-emerald-300' : 'border-slate-200'} text-[11px] hover:shadow-sm transition-shadow">
+                <div class="flex items-center justify-between gap-1 mb-0.5">
+                  <span class="font-bold text-slate-800">#${i.issueNo}</span>
+                  <span class="${i.undertake === 'Y' ? 'text-emerald-700 bg-emerald-50' : 'text-slate-500 bg-slate-100'} px-1 rounded text-[9px] font-semibold">${i.undertake}</span>
+                </div>
+                <p class="text-slate-700 font-medium leading-snug line-clamp-2">${i.title}</p>
+                <div class="text-[9px] text-slate-400 mt-0.5 flex justify-between">
+                  <span>${i.raiser}</span>
+                </div>
+              </div>
+            `).join('');
+          }
+        });
+      });
+
+      // Render Filtered Side-List
+      document.getElementById('filtered-count').innerText = filtered.length;
+      const listContainer = document.getElementById('filtered-ideas-list');
+      
+      if (filtered.length === 0) {
+        listContainer.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-lg">No post-it ideas match the current filters.</div>`;
+      } else {
+        listContainer.innerHTML = filtered.map(item => `
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg hover:border-brand-300 transition-colors">
+            <div class="flex items-start justify-between gap-2">
+              <span class="font-bold text-xs bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded">Issue #${item.issueNo}</span>
+              <div class="flex items-center gap-1">
+                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded ${getBadgeColor(item.impact, 'impact')}">Imp: ${item.impact}</span>
+                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded ${getBadgeColor(item.effort, 'effort')}">Eff: ${item.effort}</span>
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${item.undertake === 'Y' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}">${item.undertake === 'Y' ? 'YES' : 'NO'}</span>
+              </div>
+            </div>
+            <p class="text-xs font-medium text-slate-800 mt-1.5">${item.title}</p>
+            <div class="flex items-center justify-between text-[10px] text-slate-500 mt-2 pt-1.5 border-t border-slate-200/60">
+              <span>Raiser: <strong class="text-slate-700">${item.raiser}</strong></span>
+              <span>Owner: <strong class="text-slate-700">${item.issueOwner || 'Unassigned'}</strong></span>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Render Issue Accordion Breakdown
+      renderIssueAccordions();
+      lucide.createIcons();
+    }
+
+    // Render Issue-by-Issue Accordion
+    function renderIssueAccordions() {
+      const container = document.getElementById('issues-accordion-container');
+      
+      let html = '';
+      for (let i = 1; i <= 10; i++) {
+        const numStr = i.toString();
+        const issueMeta = DEFAULT_ISSUES[numStr] || { name: `Issue ${i}`, owner: 'Unassigned' };
+        
+        // Find owner dynamically if overridden in items
+        const issueItems = ideas.filter(item => item.issueNo === numStr);
+        const activeOwner = issueItems.length > 0 && issueItems[0].issueOwner ? issueItems[0].issueOwner : issueMeta.owner;
+        const approvedCount = issueItems.filter(item => item.undertake === 'Y').length;
+
+        html += `
+          <div class="border border-slate-200 rounded-lg overflow-hidden bg-white">
+            <button onclick="toggleAccordion('acc-${i}')" class="w-full flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/80 transition-colors text-left">
+              <div class="flex items-center gap-3">
+                <span class="font-bold text-xs bg-brand-600 text-white w-6 h-6 rounded-full flex items-center justify-center">${i}</span>
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900">${issueMeta.name}</h4>
+                  <p class="text-[10px] text-slate-500">Owner: <span class="font-medium text-slate-700">${activeOwner}</span></p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-[11px] font-medium text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  ${issueItems.length} Ideas (${approvedCount} Approved)
+                </span>
+                <i data-lucide="chevron-down" id="icon-acc-${i}" class="w-4 h-4 text-slate-400 transition-transform"></i>
+              </div>
+            </button>
+            <div id="acc-${i}" class="hidden p-4 border-t border-slate-200 space-y-2 bg-slate-50/30">
+              ${issueItems.length === 0 ? `
+                <p class="text-xs text-slate-400 italic">No post-it ideas collected yet for this issue.</p>
+              ` : issueItems.map(item => `
+                <div class="p-2.5 bg-white border border-slate-200 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div class="flex-1">
+                    <p class="font-medium text-slate-800">${item.title}</p>
+                    <span class="text-[10px] text-slate-400">Raised by: ${item.raiser}</span>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-medium ${getBadgeColor(item.impact, 'impact')}">Impact: ${item.impact}</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-medium ${getBadgeColor(item.effort, 'effort')}">Effort: ${item.effort}</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.undertake === 'Y' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">
+                      ${item.undertake === 'Y' ? 'Undertake: YES' : 'Undertake: NO'}
+                    </span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
+    function toggleAccordion(id) {
+      const el = document.getElementById(id);
+      const icon = document.getElementById(`icon-${id}`);
+      if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+        if(icon) icon.style.transform = 'rotate(180deg)';
+      } else {
+        el.classList.add('hidden');
+        if(icon) icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    function toggleAllAccordions() {
+      for (let i = 1; i <= 10; i++) {
+        toggleAccordion(`acc-${i}`);
+      }
+    }
+
+    // Helpers
+    function getBadgeColor(val, type) {
+      if (type === 'impact') {
+        if (val === 'High') return 'bg-purple-100 text-purple-800';
+        if (val === 'Medium') return 'bg-blue-100 text-blue-800';
+        return 'bg-slate-100 text-slate-700';
+      } else {
+        if (val === 'High') return 'bg-rose-100 text-rose-800';
+        if (val === 'Medium') return 'bg-amber-100 text-amber-800';
+        return 'bg-emerald-100 text-emerald-800';
+      }
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `px-4 py-2.5 rounded-lg shadow-lg text-xs font-medium text-white flex items-center gap-2 pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0 ${type === 'error' ? 'bg-rose-600' : 'bg-slate-800'}`;
+      toast.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'check-circle'}" class="w-4 h-4"></i> ${message}`;
+      
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
