@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQCDP+CS+SP Weekly Performance Report</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Plotly JS CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Hide native radios for custom pills */
+        .pill-radio input[type="radio"] { display: none; }
+        .pill-radio label {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .pill-radio input[type="radio"]:checked + label {
+            background-color: #4f46e5;
+            color: #ffffff;
+            border-color: #4f46e5;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.25);
+        }
+
+        /* Direction specific pill checks */
+        .pill-dir-pos input[type="radio"]:checked + label {
+            background-color: #10b981;
+            color: #ffffff;
+            border-color: #10b981;
+        }
+        .pill-dir-neg input[type="radio"]:checked + label {
+            background-color: #ef4444;
+            color: #ffffff;
+            border-color: #ef4444;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen pb-16">
+
+    <!-- Top Sticky Header -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50 shadow-md">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-xl font-bold tracking-tight flex items-center gap-2">
+                    <i class="fa-solid font-bold fa-chart-line text-indigo-400"></i>
+                    SQCDP+CS Performance Tracker
+                </h1>
+                <p class="text-xs text-slate-400 mt-0.5">Safety • Quality • Cost • Delivery • People • Customer • Strategic Progress</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="newReport()" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus text-indigo-400"></i> New
+                </button>
+                <button onclick="openImportModal()" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-import text-blue-400"></i> Import JSON
+                </button>
+                <button onclick="exportJSON()" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-code text-amber-400"></i> Export JSON
+                </button>
+                <button onclick="downloadStandaloneHTML()" class="px-3 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-arrow-down"></i> Download HTML Report
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Vertical Scroll Layout -->
+    <main class="max-w-6xl mx-auto px-4 mt-6 flex flex-col gap-6">
+
+        <!-- 1. Report Metadata Section -->
+        <section class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-list text-indigo-500"></i> Report Overview
+                </h2>
+                <span id="calculatedStatusBadge" class="px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                    Status: Neutral
+                </span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Team / Department</label>
+                    <input type="text" id="teamName" placeholder="e.g. Manufacturing Operations" oninput="updateMetadata()" 
+                           class="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Week Ending Date</label>
+                    <input type="date" id="weekEnding" onchange="updateMetadata()" 
+                           class="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Report Completed By</label>
+                    <input type="text" id="completedBy" placeholder="e.g. Alex Morgan" oninput="updateMetadata()" 
+                           class="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Data Input Form (Fast Radio Selection) -->
+        <section class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <div class="border-b border-slate-100 pb-3 mb-4">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-plus text-indigo-500"></i> Add Contribution / Incident
+                </h2>
+            </div>
+
+            <form onsubmit="handleAddEntry(event)" class="space-y-4">
+                
+                <!-- Category Select Pills -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">1. Select Metric Category</label>
+                    <div class="flex flex-wrap gap-2 pill-radio">
+                        <div><input type="radio" id="cat-Safety" name="inputCategory" value="Safety" checked><label for="cat-Safety" class="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-medium block">🛡️ Safety</label></div>
+                        <div><input type="radio" id="cat-Quality" name="inputCategory" value="Quality"><label for="cat-Quality" class="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-medium block">🏅 Quality</label></div>
+                        <div><input type="radio" id="cat-Cost" name="inputCategory" value="Cost"><label for="cat-Cost" class="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-medium block">💰 Cost</label></div>
+                        <div><input type="radio" id="cat-Delivery" name="inputCategory" value="Delivery"><label for="cat-Delivery" class="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-medium block">🚚 Delivery</label></div>
+                        <div><input type="radio" id="cat-People" name="inputCategory" value="People"><label for="cat-People" class="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-medium block">👥 People</label></div>
+                        <div><input type="radio" id="cat-Customer" name="inputCategory" value="Customer"><label for="cat-Customer" class="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-medium block">🤝 Customer</label></div>
+                        <div><input type="radio" id="cat-Strategic" name="inputCategory" value="Strategic Progress"><label for="cat-Strategic" class="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-medium block">🎯 Strategic Progress</label></div>
+                    </div>
+                </div>
+
+                <!-- Direction & Magnitude Radio Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">2. Impact Direction</label>
+                        <div class="flex gap-2 pill-dir-pos pill-dir-neg pill-radio">
+                            <div class="flex-1">
+                                <input type="radio" id="dir-pos" name="inputDirection" value="positive" checked onchange="updatePreviewScore()">
+                                <label for="dir-pos" class="w-full text-center py-2 rounded-lg border border-slate-200 bg-white text-emerald-700 text-xs font-bold block">
+                                    <i class="fa-solid fa-thumbs-up mr-1"></i> Positive (+)
+                                </label>
+                            </div>
+                            <div class="flex-1">
+                                <input type="radio" id="dir-neg" name="inputDirection" value="negative" onchange="updatePreviewScore()">
+                                <label for="dir-neg" class="w-full text-center py-2 rounded-lg border border-slate-200 bg-white text-rose-700 text-xs font-bold block">
+                                    <i class="fa-solid fa-thumbs-down mr-1"></i> Negative (-)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">3. Severity / Impact Level</label>
+                        <div class="flex gap-2 pill-radio">
+                            <div class="flex-1"><input type="radio" id="lvl-3" name="inputLevel" value="3" onchange="updatePreviewScore()"><label for="lvl-3" class="w-full text-center py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-bold block">High (3)</label></div>
+                            <div class="flex-1"><input type="radio" id="lvl-2" name="inputLevel" value="2" checked onchange="updatePreviewScore()"><label for="lvl-2" class="w-full text-center py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-bold block">Medium (2)</label></div>
+                            <div class="flex-1"><input type="radio" id="lvl-1" name="inputLevel" value="1" onchange="updatePreviewScore()"><label for="lvl-1" class="w-full text-center py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-bold block">Low (1)</label></div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col justify-center items-center md:items-start">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Calculated Item Score</label>
+                        <span id="scorePreviewBadge" class="text-sm font-extrabold px-3 py-1.5 rounded-md bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            +2 Points
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Description & Submit Button -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">4. Contribution Details / Description</label>
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <textarea id="inputDescription" rows="2" placeholder="Describe key achievements or incidents contributing to this score..." required
+                                  class="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"></textarea>
+                        <button type="submit" class="md:w-48 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-4 py-2 rounded-lg shadow-sm transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Add Item
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <!-- 3. Overall Score Breakdown Summary Cards -->
+        <section class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+            <div class="bg-slate-900 text-white p-3 rounded-xl shadow-sm text-center col-span-2 sm:col-span-4 lg:col-span-1">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Overall</div>
+                <div id="score-Overall" class="text-2xl font-black mt-1">0</div>
+            </div>
+            <div class="bg-white border border-slate-200 p-3 rounded-xl shadow-sm text-center">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-rose-600">Safety</div>
+                <div id="score-Safety" class="text-xl font-bold mt-1 text-slate-700">0</div>
+            </div>
+            <div class="bg-white border border-slate-200 p-3 rounded-xl shadow-sm text-center">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-amber-600">Quality</div>
+                <div id="score-Quality" class="text-xl font-bold mt-1 text-slate-700">0</div>
+            </div>
+            <div class="bg-white border border-slate-200 p-3 rounded-xl shadow-sm text-center">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Cost</div>
+                <div id="score-Cost" class="text-xl font-bold mt-1 text-slate-700">0</div>
+            </div>
+            <div class="bg-white border border-slate-200 p-3 rounded-xl shadow-sm text-center">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-blue-600">Delivery</div>
+                <div id="score-Delivery" class="text-xl font-bold mt-1 text-slate-700">0</div>
+            </div>
+            <div class="bg-white border border-slate-200 p-3 rounded-xl shadow-sm text-center">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-purple-600">People</div>
+                <div id="score-People" class="text-xl font-bold mt-1 text-slate-700">0</div>
+            </div>
+            <div class="bg-white border border-slate-200 p-3 rounded-xl shadow-sm text-center">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-pink-600">Customer</div>
+                <div id="score-Customer" class="text-xl font-bold mt-1 text-slate-700">0</div>
+            </div>
+            <div class="bg-white border border-slate-200 p-3 rounded-xl shadow-sm text-center">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-cyan-600">Strategic</div>
+                <div id="score-Strategic Progress" class="text-xl font-bold mt-1 text-slate-700">0</div>
+            </div>
+        </section>
+
+        <!-- 4. Horizontal Plotly Stacked Bar Chart -->
+        <section class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <div class="border-b border-slate-100 pb-3 mb-2 flex items-center justify-between">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-bar text-indigo-500"></i> Impact Distribution Chart
+                </h2>
+                <span class="text-xs text-slate-400 font-medium">Hover over bars to see individual descriptions</span>
+            </div>
+            <div id="chart-container" class="w-full h-96"></div>
+        </section>
+
+        <!-- 5. Contributions Log Table -->
+        <section class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <div class="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-indigo-500"></i> Contributions & Incident Log
+                </h2>
+                <button onclick="clearAllEntries()" class="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2.5 py-1 rounded-md bg-rose-50 border border-rose-200 transition">
+                    Clear Log
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-700">
+                    <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
+                        <tr>
+                            <th class="py-3 px-4">Metric</th>
+                            <th class="py-3 px-4">Description</th>
+                            <th class="py-3 px-4 text-center">Impact</th>
+                            <th class="py-3 px-4 text-center">Severity</th>
+                            <th class="py-3 px-4 text-center">Score</th>
+                            <th class="py-3 px-4 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="entriesTableBody" class="divide-y divide-slate-100">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+                <div id="emptyTableState" class="text-center py-10 text-slate-400 text-sm">
+                    <i class="fa-solid fa-inbox text-3xl mb-2 text-slate-300 block"></i>
+                    No contributions added yet. Use the form above to add your first entry.
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal for JSON Import -->
+    <div id="importModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl border border-slate-200">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <h3 class="text-base font-bold text-slate-800">Import Report JSON</h3>
+                <button onclick="closeImportModal()" class="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Select File</label>
+                    <input type="file" id="jsonFileInput" accept=".json" onchange="handleFileSelect(event)" 
+                           class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                </div>
+                
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink mx-2 text-[10px] text-slate-400 font-bold uppercase">Or Paste JSON Data</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <div>
+                    <textarea id="jsonPasteArea" rows="6" placeholder='{"metadata": {}, "entries": []}' 
+                              class="w-full text-xs font-mono p-3 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500"></textarea>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="closeImportModal()" class="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">Cancel</button>
+                <button onclick="applyJSONImport()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">Load Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // Clean empty default state
+        let reportData = {
+            metadata: {
+                teamName: "",
+                weekEnding: new Date().toISOString().split('T')[0],
+                completedBy: ""
+            },
+            entries: []
+        };
+
+        const CATEGORIES = ['Safety', 'Quality', 'Cost', 'Delivery', 'People', 'Customer', 'Strategic Progress'];
+        
+        const categoryColors = {
+            'Safety': '#ef4444',
+            'Quality': '#f59e0b',
+            'Cost': '#10b981',
+            'Delivery': '#3b82f6',
+            'People': '#8b5cf6',
+            'Customer': '#ec4899',
+            'Strategic Progress': '#06b6d4'
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('weekEnding').value = reportData.metadata.weekEnding;
+            updatePreviewScore();
+            renderAll();
+        });
+
+        function updatePreviewScore() {
+            const dirEl = document.querySelector('input[name="inputDirection"]:checked');
+            const lvlEl = document.querySelector('input[name="inputLevel"]:checked');
+            if (!dirEl || !lvlEl) return;
+
+            const dir = dirEl.value;
+            const lvl = parseInt(lvlEl.value, 10);
+            const score = dir === 'positive' ? lvl : -lvl;
+
+            const badge = document.getElementById('scorePreviewBadge');
+            if (score > 0) {
+                badge.className = 'text-sm font-extrabold px-3 py-1.5 rounded-md bg-emerald-100 text-emerald-700 border border-emerald-200';
+                badge.textContent = `+${score} Points`;
+            } else {
+                badge.className = 'text-sm font-extrabold px-3 py-1.5 rounded-md bg-rose-100 text-rose-700 border border-rose-200';
+                badge.textContent = `${score} Points`;
+            }
+        }
+
+        function handleAddEntry(e) {
+            e.preventDefault();
+            const category = document.querySelector('input[name="inputCategory"]:checked').value;
+            const direction = document.querySelector('input[name="inputDirection"]:checked').value;
+            const level = parseInt(document.querySelector('input[name="inputLevel"]:checked').value, 10);
+            const description = document.getElementById('inputDescription').value.trim();
+
+            if (!description) return;
+
+            const score = direction === 'positive' ? level : -level;
+
+            reportData.entries.unshift({
+                id: Date.now().toString(),
+                category,
+                direction,
+                level,
+                score,
+                description
+            });
+
+            document.getElementById('inputDescription').value = '';
+            renderAll();
+        }
+
+        function deleteEntry(id) {
+            reportData.entries = reportData.entries.filter(item => item.id !== id);
+            renderAll();
+        }
+
+        function clearAllEntries() {
+            if (confirm("Are you sure you want to clear all entries?")) {
+                reportData.entries = [];
+                renderAll();
+            }
+        }
+
+        function newReport() {
+            if (confirm("Create a new report? This will reset the form and entries.")) {
+                reportData = {
+                    metadata: {
+                        teamName: "",
+                        weekEnding: new Date().toISOString().split('T')[0],
+                        completedBy: ""
+                    },
+                    entries: []
+                };
+                document.getElementById('teamName').value = "";
+                document.getElementById('weekEnding').value = reportData.metadata.weekEnding;
+                document.getElementById('completedBy').value = "";
+                renderAll();
+            }
+        }
+
+        function updateMetadata() {
+            reportData.metadata.teamName = document.getElementById('teamName').value;
+            reportData.metadata.weekEnding = document.getElementById('weekEnding').value;
+            reportData.metadata.completedBy = document.getElementById('completedBy').value;
+        }
+
+        function renderAll() {
+            renderTable();
+            renderScoreCards();
+            renderPlotlyChart();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('entriesTableBody');
+            const emptyState = document.getElementById('emptyTableState');
+
+            tbody.innerHTML = '';
+
+            if (reportData.entries.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            } else {
+                emptyState.style.display = 'none';
+            }
+
+            reportData.entries.forEach(item => {
+                const tr = document.createElement('tr');
+                const isPos = item.score > 0;
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-semibold">
+                        <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold" 
+                              style="background:${categoryColors[item.category]}18; color:${categoryColors[item.category]}; border: 1px solid ${categoryColors[item.category]}40;">
+                            ${item.category}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 font-medium text-slate-800 leading-normal max-w-md">${escapeHtml(item.description)}</td>
+                    <td class="py-3 px-4 text-center font-bold ${isPos ? 'text-emerald-600' : 'text-rose-600'}">
+                        ${isPos ? 'Positive (+)' : 'Negative (-)'}
+                    </td>
+                    <td class="py-3 px-4 text-center text-slate-500">${item.level === 3 ? 'High' : item.level === 2 ? 'Medium' : 'Low'} (${item.level})</td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="inline-block px-2.5 py-0.5 rounded text-xs font-black ${isPos ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                            ${isPos ? '+' + item.score : item.score}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                        <button onclick="deleteEntry('${item.id}')" class="text-rose-500 hover:text-rose-700 p-1">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderScoreCards() {
+            let total = 0;
+
+            CATEGORIES.forEach(cat => {
+                const catEntries = reportData.entries.filter(e => e.category === cat);
+                const sum = catEntries.reduce((acc, curr) => acc + curr.score, 0);
+                total += sum;
+
+                const cardEl = document.getElementById(`score-${cat}`);
+                if (cardEl) {
+                    cardEl.textContent = sum > 0 ? `+${sum}` : sum;
+                    cardEl.className = `text-xl font-bold mt-1 ${sum > 0 ? 'text-emerald-600' : sum < 0 ? 'text-rose-600' : 'text-slate-700'}`;
+                }
+            });
+
+            const overallEl = document.getElementById('score-Overall');
+            overallEl.textContent = total > 0 ? `+${total}` : total;
+            overallEl.className = `text-2xl font-black mt-1 ${total > 0 ? 'text-emerald-400' : total < 0 ? 'text-rose-400' : 'text-white'}`;
+
+            const badge = document.getElementById('calculatedStatusBadge');
+            if (total > 2) {
+                badge.textContent = "Status: GOOD WEEK (+)";
+                badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200";
+            } else if (total < -2) {
+                badge.textContent = "Status: BAD WEEK (-)";
+                badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-700 border border-rose-200";
+            } else {
+                badge.textContent = "Status: NEUTRAL";
+                badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-600 border border-slate-200";
+            }
+        }
+
+        function renderPlotlyChart() {
+            const yCategories = [...CATEGORIES].reverse();
+
+            let posMax = 0;
+            let negMax = 0;
+
+            yCategories.forEach(cat => {
+                const posCount = reportData.entries.filter(e => e.category === cat && e.score > 0).length;
+                const negCount = reportData.entries.filter(e => e.category === cat && e.score < 0).length;
+                if (posCount > posMax) posMax = posCount;
+                if (negCount > negMax) negMax = negCount;
+            });
+
+            const traces = [];
+
+            // Positive Traces
+            for (let i = 0; i < posMax; i++) {
+                const xVals = [];
+                const hoverTexts = [];
+
+                yCategories.forEach(cat => {
+                    const posEntries = reportData.entries.filter(e => e.category === cat && e.score > 0);
+                    if (posEntries[i]) {
+                        xVals.push(posEntries[i].score);
+                        hoverTexts.push(`<b>${cat} (+${posEntries[i].score})</b><br>• ${breakText(posEntries[i].description)}`);
+                    } else {
+                        xVals.push(0);
+                        hoverTexts.push('');
+                    }
+                });
+
+                traces.push({
+                    type: 'bar',
+                    orientation: 'h',
+                    name: `Positive ${i+1}`,
+                    y: yCategories,
+                    x: xVals,
+                    hoverinfo: 'text',
+                    hovertext: hoverTexts,
+                    marker: { color: '#10b981', opacity: 1 - (i * 0.15) },
+                    showlegend: false
+                });
+            }
+
+            // Negative Traces
+            for (let i = 0; i < negMax; i++) {
+                const xVals = [];
+                const hoverTexts = [];
+
+                yCategories.forEach(cat => {
+                    const negEntries = reportData.entries.filter(e => e.category === cat && e.score < 0);
+                    if (negEntries[i]) {
+                        xVals.push(negEntries[i].score);
+                        hoverTexts.push(`<b>${cat} (${negEntries[i].score})</b><br>• ${breakText(negEntries[i].description)}`);
+                    } else {
+                        xVals.push(0);
+                        hoverTexts.push('');
+                    }
+                });
+
+                traces.push({
+                    type: 'bar',
+                    orientation: 'h',
+                    name: `Negative ${i+1}`,
+                    y: yCategories,
+                    x: xVals,
+                    hoverinfo: 'text',
+                    hovertext: hoverTexts,
+                    marker: { color: '#ef4444', opacity: 1 - (i * 0.15) },
+                    showlegend: false
+                });
+            }
+
+            const layout = {
+                barmode: 'relative',
+                margin: { l: 120, r: 30, t: 10, b: 40 },
+                xaxis: {
+                    title: { text: 'Impact Score Balance', font: { size: 11, color: '#64748b' } },
+                    zeroline: true,
+                    zerolinecolor: '#334155',
+                    zerolinewidth: 2,
+                    gridcolor: '#f1f5f9'
+                },
+                yaxis: {
+                    tickfont: { font: { size: 11, weight: 'bold', color: '#334155' } }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                autosize: true
+            };
+
+            const config = { responsive: true, displayModeBar: false };
+            Plotly.newPlot('chart-container', traces, layout, config);
+        }
+
+        function breakText(text, maxLen = 45) {
+            if (!text) return '';
+            const words = text.split(' ');
+            let lines = [];
+            let currentLine = '';
+
+            words.forEach(word => {
+                if ((currentLine + word).length > maxLen) {
+                    lines.push(currentLine.trim());
+                    currentLine = word + ' ';
+                } else {
+                    currentLine += word + ' ';
+                }
+            });
+            lines.push(currentLine.trim());
+            return lines.join('<br>');
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Export Raw Data as JSON
+        function exportJSON() {
+            updateMetadata();
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `SQCDP_Data_${reportData.metadata.teamName || 'Weekly'}_${reportData.metadata.weekEnding}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        // Download Standalone Self-contained HTML Report
+        function downloadStandaloneHTML() {
+            updateMetadata();
+            
+            let total = 0;
+            const categoryScores = {};
+            CATEGORIES.forEach(cat => {
+                const sum = reportData.entries.filter(e => e.category === cat).reduce((a, b) => a + b.score, 0);
+                categoryScores[cat] = sum;
+                total += sum;
+            });
+
+            const statusText = total > 2 ? "GOOD WEEK (+)" : total < -2 ? "BAD WEEK (-)" : "NEUTRAL";
+            const statusColor = total > 2 ? "#10b981" : total < -2 ? "#ef4444" : "#64748b";
+
+            let tableRowsHtml = '';
+            if (reportData.entries.length === 0) {
+                tableRowsHtml = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">No records registered for this week.</td></tr>';
+            } else {
+                reportData.entries.forEach(item => {
+                    const isPos = item.score > 0;
+                    tableRowsHtml += `
+                        <tr style="border-bottom:1px solid #e2e8f0;">
+                            <td style="padding:10px 12px; font-weight:bold; color:${categoryColors[item.category] || '#334155'};">${item.category}</td>
+                            <td style="padding:10px 12px;">${escapeHtml(item.description)}</td>
+                            <td style="padding:10px 12px; text-align:center; font-weight:bold; color:${isPos ? '#10b981' : '#ef4444'};">${isPos ? 'Positive (+)' : 'Negative (-)'}</td>
+                            <td style="padding:10px 12px; text-align:center;">Level ${item.level}</td>
+                            <td style="padding:10px 12px; text-align:center; font-weight:bold;">${isPos ? '+' + item.score : item.score}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            const standaloneDoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SQCDP+CS+SP Weekly Report - ${escapeHtml(reportData.metadata.teamName || 'Team')}</title>
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"><\/script>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background:#f8fafc; color:#0f172a; padding: 24px; }
+    </style>
+</head>
+<body class="max-w-5xl mx-auto space-y-6">
+    <div class="bg-slate-900 text-white p-6 rounded-xl flex justify-between items-center shadow-md">
+        <div>
+            <h1 class="text-xl font-bold">SQCDP+CS+SP Performance Report</h1>
+            <p class="text-xs text-slate-400 mt-1">Team: ${escapeHtml(reportData.metadata.teamName || 'N/A')} | Week Ending: ${reportData.metadata.weekEnding || 'N/A'} | Author: ${escapeHtml(reportData.metadata.completedBy || 'N/A')}</p>
+        </div>
+        <div class="px-4 py-2 rounded-full font-bold text-sm bg-white" style="color:${statusColor};">
+            ${statusText}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-4 sm:grid-cols-8 gap-3">
+        <div class="bg-slate-900 text-white p-3 rounded-lg text-center font-bold">
+            <div class="text-[10px] uppercase opacity-75">Overall</div>
+            <div class="text-xl">${total > 0 ? '+' + total : total}</div>
+        </div>
+        ${CATEGORIES.map(cat => `
+            <div class="bg-white border border-slate-200 p-3 rounded-lg text-center">
+                <div class="text-[10px] font-bold uppercase text-slate-500">${cat}</div>
+                <div class="text-lg font-black mt-1">${categoryScores[cat] > 0 ? '+' + categoryScores[cat] : categoryScores[cat]}</div>
+            </div>
+        `).join('')}
+    </div>
+
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="text-sm font-bold text-slate-600 uppercase mb-3">Impact Score Chart</h3>
+        <div id="html-report-chart" class="w-full h-80"></div>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="text-sm font-bold text-slate-600 uppercase mb-3">Contributions & Log</h3>
+        <table class="w-full text-left text-xs border-collapse">
+            <thead>
+                <tr class="bg-slate-100 text-slate-600 uppercase text-[10px]">
+                    <th style="padding:10px;">Metric</th>
+                    <th style="padding:10px;">Description</th>
+                    <th style="padding:10px; text-align:center;">Impact</th>
+                    <th style="padding:10px; text-align:center;">Level</th>
+                    <th style="padding:10px; text-align:center;">Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${tableRowsHtml}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const reportJSON = ${JSON.stringify(reportData)};
+        const CATEGORIES = ${JSON.stringify(CATEGORIES)};
+        const yCategories = [...CATEGORIES].reverse();
+
+        let posMax = 0, negMax = 0;
+        yCategories.forEach(cat => {
+            const posCount = reportJSON.entries.filter(e => e.category === cat && e.score > 0).length;
+            const negCount = reportJSON.entries.filter(e => e.category === cat && e.score < 0).length;
+            if (posCount > posMax) posMax = posCount;
+            if (negCount > negMax) negMax = negCount;
+        });
+
+        const traces = [];
+        for (let i = 0; i < posMax; i++) {
+            const xVals = [], hoverTexts = [];
+            yCategories.forEach(cat => {
+                const posEntries = reportJSON.entries.filter(e => e.category === cat && e.score > 0);
+                if (posEntries[i]) {
+                    xVals.push(posEntries[i].score);
+                    hoverTexts.push('<b>' + cat + ' (+' + posEntries[i].score + ')</b><br>' + posEntries[i].description);
+                } else { xVals.push(0); hoverTexts.push(''); }
+            });
+            traces.push({ type: 'bar', orientation: 'h', y: yCategories, x: xVals, hoverinfo: 'text', hovertext: hoverTexts, marker: { color: '#10b981', opacity: 1 - (i * 0.15) }, showlegend: false });
+        }
+
+        for (let i = 0; i < negMax; i++) {
+            const xVals = [], hoverTexts = [];
+            yCategories.forEach(cat => {
+                const negEntries = reportJSON.entries.filter(e => e.category === cat && e.score < 0);
+                if (negEntries[i]) {
+                    xVals.push(negEntries[i].score);
+                    hoverTexts.push('<b>' + cat + ' (' + negEntries[i].score + ')</b><br>' + negEntries[i].description);
+                } else { xVals.push(0); hoverTexts.push(''); }
+            });
+            traces.push({ type: 'bar', orientation: 'h', y: yCategories, x: xVals, hoverinfo: 'text', hovertext: hoverTexts, marker: { color: '#ef4444', opacity: 1 - (i * 0.15) }, showlegend: false });
+        }
+
+        Plotly.newPlot('html-report-chart', traces, {
+            barmode: 'relative',
+            margin: { l: 120, r: 20, t: 10, b: 30 },
+            xaxis: { zeroline: true, zerolinecolor: '#334155' },
+            autosize: true
+        }, { responsive: true, displayModeBar: false });
+    <\/script>
+</body>
+</html>`;
+
+            const blob = new Blob([standaloneDoc], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SQCDP_Report_${reportData.metadata.teamName || 'Weekly'}_${reportData.metadata.weekEnding}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Import Modal logic
+        function openImportModal() {
+            document.getElementById('importModal').classList.remove('hidden');
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.add('hidden');
+            document.getElementById('jsonFileInput').value = '';
+            document.getElementById('jsonPasteArea').value = '';
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                document.getElementById('jsonPasteArea').value = evt.target.result;
+            };
+            reader.readAsText(file);
+        }
+
+        function applyJSONImport() {
+            const raw = document.getElementById('jsonPasteArea').value.trim();
+            if (!raw) return;
+
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed.metadata && Array.isArray(parsed.entries)) {
+                    reportData = parsed;
+                    document.getElementById('teamName').value = reportData.metadata.teamName || '';
+                    document.getElementById('weekEnding').value = reportData.metadata.weekEnding || '';
+                    document.getElementById('completedBy').value = reportData.metadata.completedBy || '';
+
+                    renderAll();
+                    closeImportModal();
+                } else {
+                    alert("Invalid JSON format. Structure must include 'metadata' and 'entries'.");
+                }
+            } catch (err) {
+                alert("Error parsing JSON string: " + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
