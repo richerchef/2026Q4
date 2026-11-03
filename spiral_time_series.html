@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spiral Time Series & Periodicity Explorer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #090d16;
+      color: #f1f5f9;
+      overflow-x: hidden;
+    }
+    
+    code, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Custom Range Sliders */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    input[type=range]:focus {
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: #1e293b;
+      border-radius: 3px;
+      border: 1px solid #334155;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -5px;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+      transition: transform 0.1s ease, background-color 0.1s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: #7dd3fc;
+    }
+
+    /* Glassmorphic panels */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glow-cyan {
+      box-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.3);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between text-slate-200 antialiased selection:bg-cyan-500 selection:text-black">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20">
+        <i class="fa-solid fa-compact-disc text-lg animate-spin-slow"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-lg leading-none bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">ChronoSpiral</h1>
+        <p class="text-xs text-slate-400 font-mono">Time Series Periodicity Visualizer</p>
+      </div>
+    </div>
+
+    <!-- Top Action Bar -->
+    <div class="flex items-center gap-3">
+      <label for="jsonFileInput" class="cursor-pointer text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2">
+        <i class="fa-solid fa-file-import text-cyan-400"></i> Import JSON
+      </label>
+      <input type="file" id="jsonFileInput" accept=".json" class="hidden" />
+
+      <button id="btnExportCSV" class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2">
+        <i class="fa-solid fa-download text-emerald-400"></i> Export
+      </button>
+
+      <button id="btnHelp" class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2.5 py-1.5 rounded-lg transition-all" title="Help / Documentation">
+        <i class="fa-solid fa-circle-question"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 max-w-[1920px] mx-auto w-full">
+    
+    <!-- LEFT PANEL: Controls (4 cols) -->
+    <div class="lg:col-span-4 flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-80px)] pr-1">
+      
+      <!-- Preset Datasets -->
+      <div class="glass-panel rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+            <i class="fa-solid fa-database"></i> Datasets
+          </span>
+          <span id="dataPointCount" class="text-xs font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400">0 pts</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <button data-dataset="weather" class="preset-btn py-2 px-2 text-left bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 rounded-xl transition-all group">
+            <div class="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300">Weather/Temp</div>
+            <div class="text-[10px] text-slate-400">Hourly / 2 Years</div>
+          </button>
+          <button data-dataset="telemetry" class="preset-btn py-2 px-2 text-left bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 rounded-xl transition-all group">
+            <div class="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300">Server Traffic</div>
+            <div class="text-[10px] text-slate-400">Daily / Weekly</div>
+          </button>
+          <button data-dataset="burst" class="preset-btn py-2 px-2 text-left bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 rounded-xl transition-all group">
+            <div class="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300">Hidden Pulse</div>
+            <div class="text-[10px] text-slate-400">83.5 min cycle</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Auto-Tune Periodicity Finder -->
+      <div class="glass-panel rounded-2xl p-4 border-l-4 border-l-cyan-500 glow-cyan">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles text-cyan-400"></i>
+            <h2 class="text-sm font-bold text-white">Periodicity Discovery Engine</h2>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mb-3">Runs client-side FFT / Autocorrelation over time signal to find dominant cyclic periods.</p>
+        
+        <button id="btnAutoTune" class="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 active:scale-95">
+          <i class="fa-solid fa-microchip"></i> Auto-Detect Dominant Cycle
+        </button>
+
+        <div id="detectionResults" class="mt-3 hidden">
+          <div class="text-[11px] font-semibold text-slate-400 mb-1">Top Detected Candidates:</div>
+          <div id="candidateList" class="flex flex-wrap gap-1.5"></div>
+        </div>
+      </div>
+
+      <!-- Primary Period Squeeze & Stretch Control -->
+      <div class="glass-panel rounded-2xl p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+            <i class="fa-solid fa-sliders"></i> Cycle Duration (Period)
+          </span>
+          <span id="periodReadout" class="font-mono text-sm font-bold text-cyan-300 bg-slate-900 border border-cyan-500/30 px-2.5 py-1 rounded-lg">24.00 Hours</span>
+        </div>
+
+        <!-- Quick Presets -->
+        <div class="flex flex-wrap gap-1">
+          <button data-period="60" class="period-preset-btn text-[11px] font-mono px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700">1m</button>
+          <button data-period="3600" class="period-preset-btn text-[11px] font-mono px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700">1h</button>
+          <button data-period="43200" class="period-preset-btn text-[11px] font-mono px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700">12h</button>
+          <button data-period="86400" class="period-preset-btn text-[11px] font-mono px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700">24h</button>
+          <button data-period="604800" class="period-preset-btn text-[11px] font-mono px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700">7d</button>
+          <button data-period="2592000" class="period-preset-btn text-[11px] font-mono px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700">30d</button>
+          <button data-period="31536000" class="period-preset-btn text-[11px] font-mono px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700">365d</button>
+        </div>
+
+        <!-- Logarithmic Slider (Seconds representation) -->
+        <div>
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+            <span>1 min</span>
+            <span>1 hour</span>
+            <span>1 day</span>
+            <span>1 year</span>
+          </div>
+          <input type="range" id="periodLogSlider" min="1.778" max="7.5" step="0.0001" value="4.936" class="w-full">
+        </div>
+
+        <!-- Nudge / Fine-tune bar -->
+        <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-800">
+          <span class="text-xs text-slate-400">Fine Tune:</span>
+          <div class="flex items-center gap-1">
+            <button id="btnNudgeMinus10" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded border border-slate-700 font-mono">-1%</button>
+            <button id="btnNudgeMinus1" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded border border-slate-700 font-mono">-0.1%</button>
+            <button id="btnNudgePlus1" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded border border-slate-700 font-mono">+0.1%</button>
+            <button id="btnNudgePlus10" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded border border-slate-700 font-mono">+1%</button>
+          </div>
+        </div>
+
+        <!-- Phase offset -->
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-xs text-slate-400">Phase Shift (Rotation):</span>
+          <input type="range" id="phaseSlider" min="0" max="360" value="0" class="w-1/2">
+          <span id="phaseReadout" class="font-mono text-xs text-slate-300 w-12 text-right">0°</span>
+        </div>
+      </div>
+
+      <!-- Geometry & Display Settings -->
+      <div class="glass-panel rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+            <i class="fa-solid fa-palette"></i> Render & Geometry
+          </span>
+          <button id="btnAutoFit" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-700/60 hover:bg-cyan-900 transition-all flex items-center gap-1">
+            <i class="fa-solid fa-expand text-[10px]"></i> Auto-Fit: ON
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Color Palette</label>
+            <select id="colormapSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs py-1.5 px-2 text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="turbo">Turbo (Rainbow)</option>
+              <option value="plasma" selected>Plasma (Purple-Yellow)</option>
+              <option value="viridis">Viridis (Green-Yellow)</option>
+              <option value="cyanMagenta">Neon Cyan-Magenta</option>
+              <option value="fire">Solar Fire</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Render Mode</label>
+            <select id="renderModeSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs py-1.5 px-2 text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="dots" selected>Dots / Scatter</option>
+              <option value="bars">Radial Height Bars</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Spiral Pitch / Expansion -->
+        <div class="space-y-2 pt-2 border-t border-slate-800">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-400">Ring Tightness (Pitch):</span>
+            <span id="pitchReadout" class="font-mono text-slate-300">1.0x</span>
+          </div>
+          <input type="range" id="pitchSlider" min="0.2" max="3.0" step="0.05" value="1.0" class="w-full">
+        </div>
+
+        <!-- Point Size / Width -->
+        <div class="space-y-2">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-400">Point Size / Thickness:</span>
+            <span id="sizeReadout" class="font-mono text-slate-300">3 px</span>
+          </div>
+          <input type="range" id="pointSizeSlider" min="1" max="15" step="0.5" value="3" class="w-full">
+        </div>
+
+        <!-- Event Anomaly / Threshold Filter -->
+        <div class="space-y-2 pt-2 border-t border-slate-800">
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-400">Highlight Peaks (> Percentile):</span>
+            <span id="thresholdReadout" class="font-mono text-xs text-amber-400">Off</span>
+          </div>
+          <input type="range" id="thresholdSlider" min="50" max="100" value="100" class="w-full">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT PANEL: Canvas Visualization (8 cols) -->
+    <div class="lg:col-span-8 flex flex-col gap-3 h-full">
+      <div class="glass-panel rounded-2xl p-3 flex-1 flex flex-col relative min-h-[550px]">
+        
+        <!-- Canvas Top Toolbar Controls -->
+        <div class="flex items-center justify-between mb-2 px-2 z-10">
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-compass text-cyan-400"></i> Spiral Viewport
+            </span>
+            <div id="hoverInfo" class="text-xs font-mono text-slate-400 bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-full hidden">
+              <!-- Dynamically populated on hover -->
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="btnToggleSpokes" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-all">
+              <i class="fa-solid fa-circle-notch text-slate-400"></i> Spokes
+            </button>
+            <button id="btnResetView" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-all" title="Reset Zoom / Pan">
+              <i class="fa-solid fa-arrows-to-dot"></i> Recenter
+            </button>
+          </div>
+        </div>
+
+        <!-- HTML Canvas Container -->
+        <div class="relative flex-1 w-full h-full min-h-[480px] overflow-hidden rounded-xl bg-slate-950/60 border border-slate-800/80 cursor-crosshair" id="canvasContainer">
+          <canvas id="spiralCanvas" class="absolute inset-0 w-full h-full"></canvas>
+
+          <!-- Floating legend -->
+          <div class="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur border border-slate-800 p-2 rounded-xl flex items-center gap-2 text-[10px] text-slate-400">
+            <span>Low</span>
+            <div id="legendBar" class="w-24 h-2.5 rounded-sm"></div>
+            <span>High</span>
+          </div>
+
+          <!-- Time Span Overlay -->
+          <div class="absolute bottom-3 right-3 bg-slate-900/80 backdrop-blur border border-slate-800 px-3 py-1.5 rounded-xl text-right text-[11px] font-mono text-slate-300">
+            <div><span class="text-slate-500">Span:</span> <span id="timeSpanReadout">---</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Explanation / Instructions Modal -->
+  <div id="helpModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="glass-panel max-w-xl w-full rounded-2xl p-6 border border-slate-700 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-lg text-cyan-400 flex items-center gap-2">
+          <i class="fa-solid fa-circle-info"></i> How Spiral Visualizations Work
+        </h3>
+        <button id="btnCloseHelp" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+        <p>
+          Unlike linear timelines where repeating patterns get stretched out horizontally, a <strong>Polar Spiral</strong> wraps time around a circle.
+        </p>
+        <ul class="list-disc pl-5 space-y-1.5 text-slate-400">
+          <li><strong>Angle ($\theta$):</strong> Represents phase position within a cycle (e.g. Hour of day or Month of year).</li>
+          <li><strong>Radius ($r$):</strong> Represents continuous time progression outwards from center.</li>
+        </ul>
+        <div class="bg-cyan-950/30 border border-cyan-800/40 p-3 rounded-xl">
+          <span class="font-bold text-cyan-300 block mb-1">💡 Finding Periodicities & Alignment:</span>
+          When the selected <strong>Cycle Duration</strong> matches the true underlying periodicity of the data, repeating spikes will form striking <strong>radial spokes or straight rays</strong> beaming out from the center!
+        </div>
+        <p>Use the <strong>"Auto-Detect Dominant Cycle"</strong> button to let the algorithm automatically search for periodic signals using Fast Fourier Transforms and Autocorrelation.</p>
+      </div>
+
+      <div class="pt-2 text-right">
+        <button id="btnGotIt" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl text-xs">Got it!</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ChronoSpiral App Logic
+     * Single self-contained architecture for interactive spiral time series analysis.
+     */
+
+    // --- State Management ---
+    const state = {
+      rawData: [],            // Standardized array of { timestamp: Date, value: Number }
+      processedData: [],      // Sorted with normalized values
+      periodSeconds: 86400,   // Default: 24 Hours
+      phaseOffsetDeg: 0,
+      pitchMultiplier: 1.0,
+      pointSize: 3,
+      autoFit: true,          // Automatically adjust pitch & point size to viewport
+      colormap: 'plasma',
+      renderMode: 'dots',
+      thresholdPercentile: 100, // 100 = display all
+      showSpokes: true,
+      
+      // Canvas transform state
+      zoom: 1.0,
+      panX: 0,
+      panY: 0,
+      isDragging: false,
+      dragStart: { x: 0, y: 0 },
+      hoveredIndex: null
+    };
+
+    // --- DOM Elements ---
+    const canvas = document.getElementById('spiralCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasContainer = document.getElementById('canvasContainer');
+
+    // Controls
+    const periodLogSlider = document.getElementById('periodLogSlider');
+    const periodReadout = document.getElementById('periodReadout');
+    const phaseSlider = document.getElementById('phaseSlider');
+    const phaseReadout = document.getElementById('phaseReadout');
+    const pitchSlider = document.getElementById('pitchSlider');
+    const pitchReadout = document.getElementById('pitchReadout');
+    const pointSizeSlider = document.getElementById('pointSizeSlider');
+    const sizeReadout = document.getElementById('sizeReadout');
+    const btnAutoFit = document.getElementById('btnAutoFit');
+    const colormapSelect = document.getElementById('colormapSelect');
+    const renderModeSelect = document.getElementById('renderModeSelect');
+    // --- Dynamic Spoke & Label Calculator ---
+    function getDynamicSpokeLabels(periodSec) {
+      let labels = [];
+      
+      // Select appropriate number of divisions and step formatting based on exact period length
+      if (periodSec <= 120) {
+        // Very short cycle (< 2 mins): step by clean second intervals
+        const step = periodSec / 6 > 10 ? 10 : Math.max(1, Math.round(periodSec / 6));
+        const count = Math.max(4, Math.min(12, Math.round(periodSec / step)));
+        for (let i = 0; i < count; i++) {
+          const s = (i * (periodSec / count)).toFixed(1);
+          labels.push(`${s}s`);
+        }
+      } else if (periodSec <= 7200) {
+        // Minutes scale (< 2 hours): format in minutes/seconds
+        const totalMins = periodSec / 60;
+        let numDivisions = 6;
+        if (totalMins % 8 === 0) numDivisions = 8;
+        else if (totalMins % 12 === 0 || totalMins >= 30) numDivisions = 12;
+
+        const minStep = totalMins / numDivisions;
+        for (let i = 0; i < numDivisions; i++) {
+          const m = i * minStep;
+          if (m >= 60) {
+            const h = Math.floor(m / 60);
+            const remM = Math.round(m % 60);
+            labels.push(`${h}h${remM > 0 ? remM + 'm' : ''}`);
+          } else {
+            labels.push(`${m % 1 === 0 ? m : m.toFixed(1)}m`);
+          }
+        }
+      } else if (periodSec <= 259200) {
+        // Hours scale (< 3 days): format in hours
+        const totalHours = periodSec / 3600;
+        let numDivisions = 8;
+        if (totalHours % 6 === 0 || totalHours === 24) numDivisions = 12;
+        else if (totalHours % 4 === 0) numDivisions = 8;
+        else if (totalHours <= 12) numDivisions = 6;
+
+        const hourStep = totalHours / numDivisions;
+        for (let i = 0; i < numDivisions; i++) {
+          const h = i * hourStep;
+          if (totalHours === 24) {
+            labels.push(`${String(Math.round(h)).padStart(2, '0')}:00`);
+          } else {
+            labels.push(`+${h % 1 === 0 ? h : h.toFixed(1)}h`);
+          }
+        }
+      } else if (periodSec <= 5184000) {
+        // Days scale (< 60 days): format in Day numbers or Day-of-week if 7 days
+        const totalDays = periodSec / 86400;
+        if (Math.abs(totalDays - 7) < 0.1) {
+          labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        } else {
+          let numDivisions = 8;
+          if (totalDays <= 6) numDivisions = Math.max(4, Math.round(totalDays));
+          else if (totalDays <= 14) numDivisions = 7;
+          else if (totalDays <= 31) numDivisions = 6;
+
+          const dayStep = totalDays / numDivisions;
+          for (let i = 0; i < numDivisions; i++) {
+            const d = i * dayStep;
+            labels.push(`Day ${d % 1 === 0 ? d : d.toFixed(1)}`);
+          }
+        }
+      } else {
+        // Long scale (Months / Years)
+        const totalDays = periodSec / 86400;
+        if (Math.abs(totalDays - 365.25) < 5) {
+          labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        } else {
+          const totalMonths = totalDays / 30.4375;
+          const numDivisions = Math.min(12, Math.max(4, Math.round(totalMonths)));
+          const monthStep = totalMonths / numDivisions;
+          for (let i = 0; i < numDivisions; i++) {
+            const m = i * monthStep;
+            labels.push(`M ${m % 1 === 0 ? m : m.toFixed(1)}`);
+          }
+        }
+      }
+
+      return labels;
+    }
+
+    // --- Dynamic Geometry Auto-Fit Engine ---
+    function autoFitGeometry() {
+      if (!state.autoFit || state.processedData.length === 0) return;
+
+      const totalTime = state.processedData[state.processedData.length - 1].timeSec;
+      const numTurns = Math.max(0.5, totalTime / state.periodSeconds);
+
+      // Adjust pitch multiplier according to turn density so the spiral fills space optimally
+      let optimalPitch = 1.0;
+      if (numTurns > 20) {
+        optimalPitch = Math.max(0.2, 1.0 - (numTurns - 20) * 0.02);
+      } else if (numTurns < 2) {
+        optimalPitch = Math.min(2.5, 1.0 + (2 - numTurns) * 0.5);
+      }
+
+      state.pitchMultiplier = parseFloat(optimalPitch.toFixed(2));
+      pitchSlider.value = state.pitchMultiplier;
+      pitchReadout.textContent = `${state.pitchMultiplier.toFixed(1)}x`;
+
+      // Scale point size proportionally to the inter-ring spacing gap
+      const rect = canvasContainer.getBoundingClientRect();
+      const minDim = Math.min(rect.width, rect.height) / 2;
+      const maxRadius = minDim * 0.82;
+      const interRingGap = maxRadius / numTurns * state.pitchMultiplier;
+
+      // Set point size to ~35% of the inter-ring gap width
+      const computedPtSize = Math.max(1.5, Math.min(12, interRingGap * 0.35));
+      state.pointSize = parseFloat(computedPtSize.toFixed(1));
+      pointSizeSlider.value = state.pointSize;
+      sizeReadout.textContent = `${state.pointSize} px`;
+    }
+
+    // --- Period Slider Sync Logic ---
+    function setPeriodSeconds(sec) {
+      state.periodSeconds = Math.max(0.1, sec);
+      // Synchronize logarithmic slider position (log10 scale)
+      const logVal = Math.log10(state.periodSeconds);
+      periodLogSlider.value = logVal;
+      updatePeriodReadout();
+      autoFitGeometry();
+      render();
+    }
+
+    function updatePeriodReadout() {
+      periodReadout.textContent = formatDuration(state.periodSeconds);
+    }
+
+    // --- Data Processing ---
+    function loadDataset(dataArray) {
+      if (!dataArray || dataArray.length === 0) return;
+
+      // Ensure timestamp conversion and sorting
+      state.rawData = dataArray.map(d => ({
+        timestamp: new Date(d.timestamp),
+        value: Number(d.value)
+      })).filter(d => !isNaN(d.timestamp.getTime()) && !isNaN(d.value));
+
+      state.rawData.sort((a, b) => a.timestamp - b.timestamp);
+
+      // Compute min / max values for normalization
+      const vals = state.rawData.map(d => d.value);
+      const minVal = Math.min(...vals);
+      const maxVal = Math.max(...vals);
+      const range = (maxVal - minVal) || 1;
+
+      // Compute timestamps relative to start
+      const t0 = state.rawData[0].timestamp.getTime();
+      const tEnd = state.rawData[state.rawData.length - 1].timestamp.getTime();
+
+      state.processedData = state.rawData.map(d => {
+        const timeSec = (d.timestamp.getTime() - t0) / 1000;
+        return {
+          ...d,
+          timeSec,
+          normValue: (d.value - minVal) / range
+        };
+      });
+
+      // Update UI Counters
+      dataPointCount.textContent = `${state.processedData.length.toLocaleString()} pts`;
+      timeSpanReadout.textContent = `${formatDuration((tEnd - t0) / 1000)}`;
+
+      // Reset view & auto-fit geometry
+      autoFitGeometry();
+      resetViewTransform();
+      render();
+    }
+
+    // --- Canvas Rendering & Geometry ---
+    function resizeCanvas() {
+      const rect = canvasContainer.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      autoFitGeometry();
+      render();
+    }
+
+    function render() {
+      if (!ctx || state.processedData.length === 0) return;
+
+      const width = canvas.width;
+      const height = canvas.height;
+      const dpr = window.devicePixelRatio || 1;
+
+      // Clear Screen
+      ctx.save();
+      ctx.fillStyle = '#070a12';
+      ctx.fillRect(0, 0, width, height);
+
+      // Center Origin + Apply Pan & Zoom
+      const centerX = width / 2 + state.panX * dpr;
+      const centerY = height / 2 + state.panY * dpr;
+      ctx.translate(centerX, centerY);
+      ctx.scale(state.zoom, state.zoom);
+
+      // Calculate base radial dimensions based on canvas scale
+      const minDimension = Math.min(width, height) / (2 * dpr);
+      const totalTime = state.processedData[state.processedData.length - 1].timeSec;
+      const numTurns = Math.max(0.5, totalTime / state.periodSeconds);
+
+      // Radial pitch multiplier: distance per turn
+      const maxRadius = minDimension * 0.82;
+      const pitch = (maxRadius / numTurns) * state.pitchMultiplier;
+      const innerRadius = 25 * dpr;
+
+      // Calculate exact outer radius reached by data
+      const outerRadiusReached = innerRadius + pitch * numTurns;
+
+      // --- Draw Spokes & Dynamic Reference Polar Grid ---
+      if (state.showSpokes) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
+        ctx.lineWidth = 1 * dpr;
+        ctx.font = `${10 * dpr}px "JetBrains Mono", monospace`;
+        ctx.fillStyle = '#94a3b8';
+
+        // Dynamically compute exact spoke divisions for the current period
+        const spokeLabels = getDynamicSpokeLabels(state.periodSeconds);
+        const numSpokes = spokeLabels.length;
+        const spokeLen = Math.max(maxRadius * 0.9, outerRadiusReached * 1.05);
+
+        for (let i = 0; i < numSpokes; i++) {
+          const angle = (i / numSpokes) * Math.PI * 2 - Math.PI / 2;
+          
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(angle) * spokeLen, Math.sin(angle) * spokeLen);
+          ctx.stroke();
+
+          // Text Labels around outer circumference
+          const labelDist = spokeLen + 14 * dpr;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(spokeLabels[i], Math.cos(angle) * labelDist, Math.sin(angle) * labelDist);
+        }
+
+        // Concentric outer guide boundary
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.beginPath();
+        ctx.arc(0, 0, spokeLen, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // --- Spiral Points Calculations ---
+      const phaseRadOffset = (state.phaseOffsetDeg * Math.PI) / 180;
+      const colormapFn = COLORMAPS[state.colormap] || COLORMAPS.plasma;
+      const ptSize = state.pointSize * dpr;
+
+      // Filter threshold
+      const pctCutoff = state.thresholdPercentile / 100;
+
+      // Screen positions array for hover checking
+      state.screenPositions = [];
+
+      ctx.save();
+
+      for (let i = 0; i < state.processedData.length; i++) {
+        const item = state.processedData[i];
+
+        // Anomaly / Percentile threshold filtering
+        if (state.thresholdPercentile < 100 && item.normValue < pctCutoff) {
+          continue;
+        }
+
+        // Angle = (timestamp % period) / period * 2PI
+        const turns = item.timeSec / state.periodSeconds;
+        const angle = (turns * Math.PI * 2) - Math.PI / 2 + phaseRadOffset;
+
+        // Radius = innerRadius + pitch * turns
+        const radius = innerRadius + pitch * turns;
+
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+
+        // Store screen mapped point for interactive hover detection
+        state.screenPositions.push({ x: x * state.zoom + centerX, y: y * state.zoom + centerY, index: i });
+
+        const color = colormapFn(item.normValue);
+
+        if (state.renderMode === 'dots') {
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(x, y, ptSize / 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (state.renderMode === 'bars') {
+          const barHeight = item.normValue * 25 * dpr;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = Math.max(1, ptSize / 1.5);
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + Math.cos(angle) * barHeight, y + Math.sin(angle) * barHeight);
+          ctx.stroke();
+        }
+      }
+
+      // Highlight Hovered Point
+      if (state.hoveredIndex !== null && state.processedData[state.hoveredIndex]) {
+        const hItem = state.processedData[state.hoveredIndex];
+        const hTurns = hItem.timeSec / state.periodSeconds;
+        const hAngle = (hTurns * Math.PI * 2) - Math.PI / 2 + phaseRadOffset;
+        const hRadius = innerRadius + pitch * hTurns;
+        const hx = Math.cos(hAngle) * hRadius;
+        const hy = Math.sin(hAngle) * hRadius;
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2 * dpr;
+        ctx.beginPath();
+        ctx.arc(hx, hy, ptSize + 4 * dpr, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+      ctx.restore();
+    }
+
+    // --- Interaction Event Listeners ---
+    function setupEventListeners() {
+      // Logarithmic Slider for Cycle Period
+      periodLogSlider.addEventListener('input', (e) => {
+        const logVal = parseFloat(e.target.value);
+        state.periodSeconds = Math.pow(10, logVal);
+        updatePeriodReadout();
+        autoFitGeometry();
+        render();
+      });
+
+      // Toggle Auto-Fit Mode
+      btnAutoFit.addEventListener('click', () => {
+        state.autoFit = !state.autoFit;
+        btnAutoFit.innerHTML = state.autoFit 
+          ? `<i class="fa-solid fa-expand text-[10px]"></i> Auto-Fit: ON`
+          : `<i class="fa-solid fa-hand text-[10px]"></i> Auto-Fit: OFF`;
+        btnAutoFit.classList.toggle('bg-cyan-950', state.autoFit);
+        btnAutoFit.classList.toggle('text-cyan-300', state.autoFit);
+        btnAutoFit.classList.toggle('bg-slate-800', !state.autoFit);
+        btnAutoFit.classList.toggle('text-slate-400', !state.autoFit);
+
+        if (state.autoFit) {
+          autoFitGeometry();
+          render();
+        }
+      });
+
+      // Pitch Tightness Slider (Disables Auto-Fit when adjusted manually)
+      pitchSlider.addEventListener('input', (e) => {
+        state.pitchMultiplier = parseFloat(e.target.value);
+        pitchReadout.textContent = `${state.pitchMultiplier.toFixed(1)}x`;
+        state.autoFit = false;
+        btnAutoFit.innerHTML = `<i class="fa-solid fa-hand text-[10px]"></i> Auto-Fit: OFF`;
+        btnAutoFit.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60 hover:bg-slate-700 transition-all flex items-center gap-1';
+        render();
+      });
+
+      // Point Size Slider (Disables Auto-Fit when adjusted manually)
+      pointSizeSlider.addEventListener('input', (e) => {
+        state.pointSize = parseFloat(e.target.value);
+        sizeReadout.textContent = `${state.pointSize} px`;
+        state.autoFit = false;
+        btnAutoFit.innerHTML = `<i class="fa-solid fa-hand text-[10px]"></i> Auto-Fit: OFF`;
+        btnAutoFit.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60 hover:bg-slate-700 transition-all flex items-center gap-1';
+        render();
+      });
+
+      // Quick Period Presets
+      document.querySelectorAll('.period-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sec = parseFloat(btn.dataset.period);
+          setPeriodSeconds(sec);
+        });
+      });
+
+      // Nudge Fine Tune Controls
+      document.getElementById('btnNudgeMinus10').onclick = () => setPeriodSeconds(state.periodSeconds * 0.90);
+      document.getElementById('btnNudgeMinus1').onclick = () => setPeriodSeconds(state.periodSeconds * 0.999);
+      document.getElementById('btnNudgePlus1').onclick = () => setPeriodSeconds(state.periodSeconds * 1.001);
+      document.getElementById('btnNudgePlus10').onclick = () => setPeriodSeconds(state.periodSeconds * 1.10);
+
+      // Phase Rotation Slider
+      phaseSlider.addEventListener('input', (e) => {
+        state.phaseOffsetDeg = parseFloat(e.target.value);
+        phaseReadout.textContent = `${state.phaseOffsetDeg}°`;
+        render();
+      });
+
+      // Pitch Tightness Slider
+      pitchSlider.addEventListener('input', (e) => {
+        state.pitchMultiplier = parseFloat(e.target.value);
+        pitchReadout.textContent = `${state.pitchMultiplier.toFixed(1)}x`;
+        render();
+      });
+
+      // Point Size Slider
+      pointSizeSlider.addEventListener('input', (e) => {
+        state.pointSize = parseFloat(e.target.value);
+        sizeReadout.textContent = `${state.pointSize} px`;
+        render();
+      });
+
+      // Percentile Cutoff
+      thresholdSlider.addEventListener('input', (e) => {
+        state.thresholdPercentile = parseInt(e.target.value);
+        thresholdReadout.textContent = state.thresholdPercentile === 100 ? 'Off' : `Top ${100 - state.thresholdPercentile}%`;
+        render();
+      });
+
+      // Colormap & Mode Selection
+      colormapSelect.addEventListener('change', (e) => {
+        state.colormap = e.target.value;
+        updateLegendBar();
+        render();
+      });
+
+      renderModeSelect.addEventListener('change', (e) => {
+        state.renderMode = e.target.value;
+        render();
+      });
+
+      // Dataset Presets
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dsType = btn.dataset.dataset;
+          const data = generateSyntheticData(dsType);
+          loadDataset(data);
+          if (dsType === 'weather') setPeriodSeconds(86400); // 24h default
+          else if (dsType === 'telemetry') setPeriodSeconds(86400);
+          else if (dsType === 'burst') setPeriodSeconds(5010); // 83.5 min
+        });
+      });
+
+      // Auto-Tune Button
+      btnAutoTune.addEventListener('click', autoDetectPeriodicity);
+
+      // Toggle Spokes & Reset View
+      btnToggleSpokes.addEventListener('click', () => {
+        state.showSpokes = !state.showSpokes;
+        btnToggleSpokes.classList.toggle('bg-cyan-950', state.showSpokes);
+        render();
+      });
+
+      btnResetView.addEventListener('click', resetViewTransform);
+
+      // Custom JSON Upload
+      document.getElementById('jsonFileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const parsed = JSON.parse(event.target.result);
+            if (Array.isArray(parsed)) {
+              loadDataset(parsed);
+            } else {
+              alert('JSON format error: Expected an array of objects [ { "timestamp": "...", "value": 42 } ]');
+            }
+          } catch (err) {
+            alert('Invalid JSON file parsing error.');
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // Canvas Zoom & Pan
+      canvasContainer.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+        state.zoom = Math.max(0.2, Math.min(10, state.zoom * zoomFactor));
+        render();
+      }, { passive: false });
+
+      canvasContainer.addEventListener('mousedown', (e) => {
+        if (e.button === 0) { // Left Click Pan
+          state.isDragging = true;
+          state.dragStart = { x: e.clientX, y: e.clientY };
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        state.isDragging = false;
+      });
+
+      canvasContainer.addEventListener('mousemove', handleCanvasMouseMove);
+
+      // Responsive Resize
+      window.addEventListener('resize', resizeCanvas);
+
+      // Help Modal Toggle
+      const helpModal = document.getElementById('helpModal');
+      document.getElementById('btnHelp').onclick = () => helpModal.classList.remove('hidden');
+      document.getElementById('btnCloseHelp').onclick = () => helpModal.classList.add('hidden');
+      document.getElementById('btnGotIt').onclick = () => helpModal.classList.add('hidden');
+    }
+
+    // --- Helper Utilities & Data Generators ---
+
+    function formatDuration(sec) {
+      if (sec < 60) return `${sec.toFixed(1)}s`;
+      if (sec < 3600) return `${(sec / 60).toFixed(1)}m`;
+      if (sec < 86400) return `${(sec / 3600).toFixed(2)}h`;
+      if (sec < 31536000) return `${(sec / 86400).toFixed(2)}d`;
+      return `${(sec / 31536000).toFixed(2)}y`;
+    }
+
+    function resetViewTransform() {
+      state.zoom = 1.0;
+      state.panX = 0;
+      state.panY = 0;
+      render();
+    }
+
+    function handleCanvasMouseMove(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) * window.devicePixelRatio;
+      const mouseY = (e.clientY - rect.top) * window.devicePixelRatio;
+
+      if (state.isDragging) {
+        state.panX += (e.clientX - state.dragStart.x);
+        state.panY += (e.clientY - state.dragStart.y);
+        state.dragStart = { x: e.clientX, y: e.clientY };
+        render();
+        return;
+      }
+
+      // Check proximity to plotted points
+      const hoverThreshold = 12 * window.devicePixelRatio;
+      let foundIndex = null;
+
+      if (state.screenPositions) {
+        for (let i = 0; i < state.screenPositions.length; i++) {
+          const pt = state.screenPositions[i];
+          const dist = Math.hypot(pt.x - mouseX, pt.y - mouseY);
+          if (dist < hoverThreshold) {
+            foundIndex = pt.index;
+            break;
+          }
+        }
+      }
+
+      if (foundIndex !== state.hoveredIndex) {
+        state.hoveredIndex = foundIndex;
+        const hoverInfo = document.getElementById('hoverInfo');
+        if (foundIndex !== null && state.processedData[foundIndex]) {
+          const item = state.processedData[foundIndex];
+          hoverInfo.classList.remove('hidden');
+          hoverInfo.innerHTML = `<span class="text-slate-200">${item.timestamp.toLocaleString()}</span> &bull; Value: <span class="text-cyan-300 font-bold">${item.value.toFixed(2)}</span>`;
+        } else {
+          hoverInfo.classList.add('hidden');
+        }
+        render();
+      }
+    }
+
+    // --- Color Maps Engine ---
+    const COLORMAPS = {
+      turbo: (t) => {
+        // Approximate Turbo Rainbow map
+        const r = Math.sin(t * Math.PI * 1.5 + 0.5) * 127 + 128;
+        const g = Math.sin(t * Math.PI * 2.0 + 1.5) * 127 + 128;
+        const b = Math.cos(t * Math.PI * 1.5) * 127 + 128;
+        return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+      },
+      plasma: (t) => {
+        const r = Math.min(255, Math.max(0, 13 + 242 * Math.pow(t, 0.8)));
+        const g = Math.min(255, Math.max(0, 8 + 230 * Math.pow(t, 2.5)));
+        const b = Math.min(255, Math.max(0, 135 + 120 * Math.sin(t * Math.PI)));
+        return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+      },
+      viridis: (t) => {
+        const r = Math.min(255, Math.max(0, 68 + 185 * Math.pow(t, 2)));
+        const g = Math.min(255, Math.max(0, 1 + 220 * Math.pow(t, 0.7)));
+        const b = Math.min(255, Math.max(0, 84 + 110 * Math.cos(t * Math.PI * 0.8)));
+        return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+      },
+      cyanMagenta: (t) => {
+        const r = Math.round(t * 255);
+        const g = Math.round((1 - Math.abs(t - 0.5) * 2) * 200);
+        const b = 255;
+        return `rgb(${r},${g},${b})`;
+      },
+      fire: (t) => {
+        const r = Math.min(255, Math.round(t * 300));
+        const g = Math.min(255, Math.max(0, Math.round((t - 0.3) * 350)));
+        const b = Math.min(255, Math.max(0, Math.round((t - 0.7) * 400)));
+        return `rgb(${r},${g},${b})`;
+      }
+    };
+
+    function updateLegendBar() {
+      const legendBar = document.getElementById('legendBar');
+      if (!legendBar) return;
+      const cmap = state.colormap;
+      if (cmap === 'plasma') legendBar.style.background = 'linear-gradient(to right, #0d0887, #9c179e, #ed7953, #f0f921)';
+      else if (cmap === 'viridis') legendBar.style.background = 'linear-gradient(to right, #440154, #21908d, #fde725)';
+      else if (cmap === 'turbo') legendBar.style.background = 'linear-gradient(to right, #30123b, #1ae4b6, #aabec6, #faba39, #7a0403)';
+      else if (cmap === 'cyanMagenta') legendBar.style.background = 'linear-gradient(to right, #0000ff, #00ffff, #ff00ff)';
+      else if (cmap === 'fire') legendBar.style.background = 'linear-gradient(to right, #000000, #ff0000, #ffff00, #ffffff)';
+    }
+
+    // --- Synthetic Dataset Generator ---
+    function generateSyntheticData(type) {
+      const data = [];
+      const startTime = new Date('2025-01-01T00:00:00Z').getTime();
+
+      if (type === 'weather') {
+        // Hourly readings for 2 years (17,520 points) with 24h daily and 365d annual cycles
+        const totalHours = 24 * 365 * 2;
+        for (let i = 0; i < totalHours; i++) {
+          const time = new Date(startTime + i * 3600 * 1000);
+          const dayOfYear = i / 24;
+          const hourOfDay = i % 24;
+
+          const annualTemp = -15 * Math.cos((dayOfYear / 365) * 2 * Math.PI);
+          const dailyTemp = 8 * Math.sin(((hourOfDay - 6) / 24) * 2 * Math.PI);
+          const noise = (Math.random() - 0.5) * 4;
+
+          data.push({ timestamp: time.toISOString(), value: 15 + annualTemp + dailyTemp + noise });
+        }
+      } else if (type === 'telemetry') {
+        // 15-minute server load telemetry over 90 days with daily work-hour peaks
+        const totalIntervals = 90 * 24 * 4;
+        for (let i = 0; i < totalIntervals; i++) {
+          const time = new Date(startTime + i * 15 * 60 * 1000);
+          const hourOfDay = (i / 4) % 24;
+          const dayOfWeek = Math.floor(i / (4 * 24)) % 7;
+
+          let load = 15 + Math.random() * 5;
+          const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+          if (!isWeekend && hourOfDay >= 8 && hourOfDay <= 18) {
+            load += 60 * Math.sin(((hourOfDay - 8) / 10) * Math.PI);
+          }
+          if (Math.random() < 0.01) load += 30; // Occasional random spikes
+
+          data.push({ timestamp: time.toISOString(), value: load });
+        }
+      } else if (type === 'burst') {
+        // Signal with hidden 83.5 minute pulse interval (5010s)
+        const totalPoints = 3000;
+        const intervalSec = 60; // 1 min sample step
+        const pulseSec = 5010; // 83.5 minutes
+
+        for (let i = 0; i < totalPoints; i++) {
+          const tSec = i * intervalSec;
+          const time = new Date(startTime + tSec * 1000);
+          const pulsePhase = (tSec % pulseSec) / pulseSec;
+
+          let val = Math.random() * 5;
+          if (pulsePhase < 0.05) {
+            val += 80 + Math.random() * 20; // Periodic Burst
+          }
+          data.push({ timestamp: time.toISOString(), value: val });
+        }
+      }
+
+      return data;
+    }
+
+    // --- Client-Side Periodicity Detection Engine (Autocorrelation) ---
+    function autoDetectPeriodicity() {
+      if (state.processedData.length < 50) {
+        alert('Insufficient data points for period detection.');
+        return;
+      }
+
+      const candidateContainer = document.getElementById('candidateList');
+      const resultsDiv = document.getElementById('detectionResults');
+
+      btnAutoTune.disabled = true;
+      btnAutoTune.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Analyzing Frequency...`;
+
+      setTimeout(() => {
+        // Sample signal evenly for autocorrelation
+        const data = state.processedData;
+        const totalDuration = data[data.length - 1].timeSec - data[0].timeSec;
+        const numSamples = Math.min(4096, Math.max(1024, data.length));
+        const sampleStepSec = totalDuration / numSamples;
+
+        // Resample values using linear interpolation for higher precision
+        const signal = new Float64Array(numSamples);
+        let dataIdx = 0;
+        for (let i = 0; i < numSamples; i++) {
+          const targetTime = i * sampleStepSec;
+          while (dataIdx < data.length - 1 && data[dataIdx + 1].timeSec <= targetTime) {
+            dataIdx++;
+          }
+          if (dataIdx < data.length - 1) {
+            const t0 = data[dataIdx].timeSec;
+            const t1 = data[dataIdx + 1].timeSec;
+            const v0 = data[dataIdx].normValue;
+            const v1 = data[dataIdx + 1].normValue;
+            const alpha = t1 > t0 ? (targetTime - t0) / (t1 - t0) : 0;
+            signal[i] = v0 + alpha * (v1 - v0);
+          } else {
+            signal[i] = data[dataIdx].normValue;
+          }
+        }
+
+        // Mean subtraction & variance normalization
+        let sum = 0;
+        for (let i = 0; i < numSamples; i++) sum += signal[i];
+        const mean = sum / numSamples;
+        let variance = 0;
+        for (let i = 0; i < numSamples; i++) {
+          signal[i] -= mean;
+          variance += signal[i] * signal[i];
+        }
+
+        // Compute Normalized Autocorrelation over lags
+        const maxLag = Math.floor(numSamples * 0.75);
+        const autocorr = new Float64Array(maxLag);
+
+        for (let lag = 1; lag < maxLag; lag++) {
+          let lagSum = 0;
+          for (let i = 0; i < numSamples - lag; i++) {
+            lagSum += signal[i] * signal[i + lag];
+          }
+          autocorr[lag] = variance > 0 ? lagSum / variance : 0;
+        }
+
+        // Find initial zero crossing or minimum to avoid false positive in central lobe
+        let startLag = 1;
+        while (startLag < maxLag - 1 && autocorr[startLag] > 0 && autocorr[startLag] >= autocorr[startLag + 1]) {
+          startLag++;
+        }
+
+        // Find Peaks in Autocorrelation with Parabolic Interpolation for accurate sub-sample resolution
+        const rawPeaks = [];
+        for (let lag = startLag + 1; lag < maxLag - 1; lag++) {
+          if (autocorr[lag] > autocorr[lag - 1] && autocorr[lag] > autocorr[lag + 1] && autocorr[lag] > 0.05) {
+            // Parabolic interpolation around peak (y0, y1, y2)
+            const y0 = autocorr[lag - 1];
+            const y1 = autocorr[lag];
+            const y2 = autocorr[lag + 1];
+            const delta = (y2 - y0) / (2 * (2 * y1 - y0 - y2) || 1);
+            const refinedLag = lag + delta;
+            const refinedScore = y1 + 0.25 * (y2 - y0) * delta;
+
+            const periodSec = refinedLag * sampleStepSec;
+            if (periodSec > 0.5) {
+              rawPeaks.push({ periodSec, score: refinedScore });
+            }
+          }
+        }
+
+        // Filter out redundant sub-harmonics / duplicates
+        rawPeaks.sort((a, b) => b.score - a.score);
+        const filteredPeaks = [];
+        for (const p of rawPeaks) {
+          const isDuplicate = filteredPeaks.some(existing => {
+            const ratio = p.periodSec / existing.periodSec;
+            const closeHarmonic = Math.abs(ratio - Math.round(ratio)) < 0.04;
+            return closeHarmonic;
+          });
+          if (!isDuplicate) {
+            filteredPeaks.push(p);
+          }
+        }
+
+        // Render Candidates
+        candidateContainer.innerHTML = '';
+        const topCandidates = filteredPeaks.slice(0, 5);
+
+        if (topCandidates.length === 0) {
+          candidateContainer.innerHTML = `<span class="text-xs text-slate-500">No strong dominant periodicity detected. Try manually adjusting slider.</span>`;
+        } else {
+          topCandidates.forEach((cand, idx) => {
+            const chip = document.createElement('button');
+            chip.className = `text-[11px] font-mono px-2.5 py-1 rounded-lg border transition-all ${
+              idx === 0 
+                ? 'bg-cyan-950 border-cyan-500 text-cyan-300 font-bold hover:bg-cyan-900' 
+                : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+            }`;
+            chip.textContent = `${formatDuration(cand.periodSec)} (${Math.round(cand.score * 100)}%)`;
+            chip.onclick = () => setPeriodSeconds(cand.periodSec);
+            candidateContainer.appendChild(chip);
+          });
+
+          // Auto-apply strongest candidate
+          setPeriodSeconds(topCandidates[0].periodSec);
+        }
+
+        resultsDiv.classList.remove('hidden');
+        btnAutoTune.disabled = false;
+        btnAutoTune.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Detect Dominant Cycle`;
+      }, 60);
+    }
+
+    // --- Application Initialization ---
+    window.onload = () => {
+      setupEventListeners();
+      updateLegendBar();
+      resizeCanvas();
+
+      // Load initial synthetic dataset
+      const initialData = generateSyntheticData('weather');
+      loadDataset(initialData);
+      setPeriodSeconds(86400); // 24 hours
+    };
+  </script>
+</body>
+</html>
