@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sensor Details Directory</title>
+  <style>
+    :root {
+      --bg-page: #0f172a;
+      --bg-card: #1e293b;
+      --bg-input: #0f172a;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 20px;
+    }
+
+    .container { max-width: 1280px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .header h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
+    .header p { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* Search & Filter Toolbar */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 280px;
+      max-width: 580px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .search-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      outline: none;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--text-muted); }
+
+    .btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 7px 12px;
+      border-radius: 6px;
+      font-size: 0.825rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn:hover { border-color: #64748b; }
+
+    /* Quick Filter Chips */
+    .chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .chips-label {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-right: 2px;
+    }
+    .chip-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .chip-btn:hover {
+      border-color: var(--accent);
+    }
+    .chip-btn.active {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: var(--accent);
+      color: #93c5fd;
+      font-weight: 600;
+    }
+
+    /* Guidance Tooltip */
+    .tooltip-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+    .help-trigger {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .help-trigger:hover,
+    .help-trigger:focus {
+      color: var(--text-main);
+      border-color: var(--accent);
+      outline: none;
+    }
+    .tooltip-box {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 340px;
+      background: #0b1120;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 12px 14px;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+      z-index: 30;
+      font-size: 0.8rem;
+      color: var(--text-main);
+    }
+    .tooltip-wrapper:hover .tooltip-box,
+    .tooltip-wrapper:focus-within .tooltip-box {
+      display: block;
+    }
+    .tooltip-box h4 {
+      font-size: 0.82rem;
+      margin-bottom: 6px;
+      color: #93c5fd;
+    }
+    .tooltip-box ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .tooltip-box code {
+      background: rgba(59, 130, 246, 0.16);
+      color: #bfdbfe;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.76rem;
+    }
+    .tooltip-note {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .query-feedback {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      min-height: 18px;
+    }
+    .query-feedback.fallback { color: var(--amber); }
+
+    .meta-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.825rem;
+      color: var(--text-muted);
+    }
+    .count-badge {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td {
+      text-align: left;
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    th:hover { color: var(--text-main); }
+    tbody tr:hover { background: rgba(15, 23, 42, 0.45); }
+    tr:last-child td { border-bottom: none; }
+
+    .num {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .table-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .tag-an { background: rgba(59, 130, 246, 0.16); color: #60a5fa; }
+    .tag-di { background: rgba(16, 185, 129, 0.16); color: #34d399; }
+
+    .empty-state {
+      text-align: center;
+      padding: 28px 12px;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>Sensor Details Directory</h1>
+      <p>Standalone offline catalog &bull; Supports boolean search (<code>AND</code> / <code>OR</code>) across all columns</p>
+    </div>
+    <div class="meta-group">
+      <span class="count-badge" id="result-count">0 of 0 sensors</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <input
+          type="text"
+          id="sensor-search"
+          class="search-input"
+          placeholder="Try: pump AND primary, or Table_AN OR Table_DI..."
+          autocomplete="off"
+        />
+        <div class="tooltip-wrapper">
+          <button type="button" class="help-trigger" aria-label="Search syntax help">?</button>
+          <div class="tooltip-box" role="tooltip">
+            <h4>Search Syntax Guide</h4>
+            <ul>
+              <li><code>pump AND primary</code> &mdash; matches rows containing both terms.</li>
+              <li><code>cooling OR turbine</code> &mdash; matches rows containing either term.</li>
+              <li><code>"feed pump" AND Table_AN</code> &mdash; exact phrase plus required table.</li>
+              <li><code>pump AND (primary OR safety)</code> &mdash; group conditions with parentheses.</li>
+            </ul>
+            <div class="tooltip-note">
+              Multiple words without an operator default to <code>AND</code>. Searches Number, Title, Table, and System.
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn" id="btn-clear">Clear</button>
+      </div>
+      <div class="meta-group">
+        <span>Click column headers to sort</span>
+      </div>
+    </div>
+
+    <div class="chips-row" id="chips-row">
+      <span class="chips-label">Quick Filters:</span>
+    </div>
+
+    <div class="query-feedback" id="query-feedback"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-col="number">Number &#8597;</th>
+            <th data-col="title">Title &#8597;</th>
+            <th data-col="table">Table &#8597;</th>
+            <th data-col="system">System &#8597;</th>
+          </tr>
+        </thead>
+        <tbody id="sensor-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+(function() {
+  // Easy-to-edit quick filter chips: { label: "Button Text", query: "Search expression" }
+  const QUICK_FILTERS = [
+    { label: "Pump + Primary", query: "pump AND primary" },
+    { label: "Analogue Only", query: "Table_AN" },
+    { label: "Digital Only", query: "Table_DI" },
+    { label: "Vibration Sensors", query: "vibration" },
+    { label: "Turbine or Cooling", query: "turbine OR cooling" },
+    { label: "Temps & Pressures", query: "temp OR pressure" }
+  ];
+
+  const MOCK_SENSORS = [
+    { number: "SNS-1001", title: "Main Coolant Outlet Temp", table: "Table_AN", system: "Primary Cooling Loop" },
+    { number: "SNS-1002", title: "Feed Pump Discharge Pressure", table: "Table_AN", system: "Primary Cooling Loop" },
+    { number: "SNS-1003", title: "Feed Pump Run Status", table: "Table_DI", system: "Primary Cooling Loop" },
+    { number: "SNS-1004", title: "Auxiliary Valve Interlock", table: "Table_DI", system: "Safety & Trip Logic" },
+    { number: "SNS-2010", title: "Bearing 1 Drive-End Vibration", table: "Table_AN", system: "Turbine & Rotating Plant" },
+    { number: "SNS-2011", title: "Bearing 2 Non-Drive-End Vibration", table: "Table_AN", system: "Turbine & Rotating Plant" },
+    { number: "SNS-2012", title: "Lube Oil Low Pressure Trip", table: "Table_DI", system: "Turbine & Rotating Plant" },
+    { number: "SNS-2015", title: "Shaft Speed Encoder Pulse", table: "Table_DI", system: "Turbine & Rotating Plant" },
+    { number: "SNS-3001", title: "Busbar A Phase Voltage", table: "Table_AN", system: "Electrical Distribution" },
+    { number: "SNS-3002", title: "Transformer Winding Temp", table: "Table_AN", system: "Electrical Distribution" },
+    { number: "SNS-3003", title: "Main Breaker Closed State", table: "Table_DI", system: "Electrical Distribution" },
+    { number: "SNS-4008", title: "Differential Pressure Across Filter", table: "Table_AN", system: "Hydraulic & Filtration" },
+    { number: "SNS-4009", title: "Filter Clog Warning Flag", table: "Table_DI", system: "Hydraulic & Filtration" },
+    { number: "SNS-5020", title: "Exhaust Gas Manifold Temp", table: "Table_AN", system: "Thermal & Exhaust" }
+  ];
+
+  let sortCol = "number";
+  let sortAsc = true;
+
+  const searchInput = document.getElementById("sensor-search");
+  const clearBtn = document.getElementById("btn-clear");
+  const chipsRow = document.getElementById("chips-row");
+  const tbody = document.getElementById("sensor-tbody");
+  const countBadge = document.getElementById("result-count");
+  const feedbackEl = document.getElementById("query-feedback");
+
+  function renderChips() {
+    const currentQuery = searchInput.value.trim();
+    const existingButtons = chipsRow.querySelectorAll(".chip-btn");
+    existingButtons.forEach(btn => btn.remove());
+
+    QUICK_FILTERS.forEach(item => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      const isActive = currentQuery === item.query;
+      btn.className = "chip-btn" + (isActive ? " active" : "");
+      btn.textContent = item.label;
+      btn.title = `Query: ${item.query}`;
+      btn.addEventListener("click", () => {
+        searchInput.value = isActive ? "" : item.query;
+        render();
+      });
+      chipsRow.appendChild(btn);
+    });
+  }
+
+  function rowHaystack(row) {
+    return `${row.number} ${row.title} ${row.table} ${row.system}`.toLowerCase();
+  }
+
+  // Tokenizes query into LPAREN, RPAREN, AND, OR, TERM
+  function tokenizeQuery(expr) {
+    const tokens = [];
+    const regex = /\s*(\(|\)|"[^"]*"|[^\s()]+)\s*/g;
+    let match;
+
+    while ((match = regex.exec(expr)) !== null) {
+      const raw = match[1];
+      if (raw === "(") {
+        tokens.push({ type: "LPAREN" });
+      } else if (raw === ")") {
+        tokens.push({ type: "RPAREN" });
+      } else if (raw === "AND") {
+        tokens.push({ type: "AND" });
+      } else if (raw === "OR") {
+        tokens.push({ type: "OR" });
+      } else {
+        const unquoted = raw.startsWith('"') && raw.endsWith('"') && raw.length >= 2
+          ? raw.slice(1, -1)
+          : raw;
+        if (unquoted.length > 0) {
+          tokens.push({ type: "TERM", value: unquoted.toLowerCase() });
+        }
+      }
+    }
+    return tokens;
+  }
+
+  // Inserts implicit AND between adjacent operands/groups (e.g. "pump primary" or "(a) (b)")
+  function insertImplicitAnds(tokens) {
+    const out = [];
+    const isOperandStart = (t) => t && (t.type === "TERM" || t.type === "LPAREN");
+    const isOperandEnd = (t) => t && (t.type === "TERM" || t.type === "RPAREN");
+
+    for (let i = 0; i < tokens.length; i++) {
+      const curr = tokens[i];
+      if (out.length > 0 && isOperandEnd(out[out.length - 1]) && isOperandStart(curr)) {
+        out.push({ type: "AND" });
+      }
+      out.push(curr);
+    }
+    return out;
+  }
+
+  // Recursive-descent parser: Expr -> OrExpr; OrExpr -> AndExpr (OR AndExpr)*; AndExpr -> Primary (AND Primary)*
+  function compilePredicate(rawQuery) {
+    const trimmed = rawQuery.trim();
+    if (!trimmed) {
+      return { fn: () => true, fallback: false, message: "" };
+    }
+
+    const rawTokens = insertImplicitAnds(tokenizeQuery(trimmed));
+    if (!rawTokens.length) {
+      return { fn: () => true, fallback: false, message: "" };
+    }
+
+    let pos = 0;
+    let syntaxError = false;
+
+    function parseOr() {
+      let left = parseAnd();
+      while (pos < rawTokens.length && rawTokens[pos].type === "OR") {
+        pos++;
+        const right = parseAnd();
+        const prevLeft = left;
+        left = (haystack) => prevLeft(haystack) || right(haystack);
+      }
+      return left;
+    }
+
+    function parseAnd() {
+      let left = parsePrimary();
+      while (pos < rawTokens.length && rawTokens[pos].type === "AND") {
+        pos++;
+        const right = parsePrimary();
+        const prevLeft = left;
+        left = (haystack) => prevLeft(haystack) && right(haystack);
+      }
+      return left;
+    }
+
+    function parsePrimary() {
+      if (pos >= rawTokens.length) {
+        syntaxError = true;
+        return () => true;
+      }
+      const tok = rawTokens[pos];
+      if (tok.type === "LPAREN") {
+        pos++;
+        const inner = parseOr();
+        if (pos < rawTokens.length && rawTokens[pos].type === "RPAREN") {
+          pos++;
+        } else {
+          syntaxError = true;
+        }
+        return inner;
+      }
+      if (tok.type === "TERM") {
+        pos++;
+        const term = tok.value;
+        return (haystack) => haystack.includes(term);
+      }
+      syntaxError = true;
+      pos++;
+      return () => true;
+    }
+
+    const predicate = parseOr();
+    if (pos < rawTokens.length) {
+      syntaxError = true;
+    }
+
+    // If user is mid-expression (e.g. "pump AND"), match all terms present with OR so results stay helpful
+    if (syntaxError) {
+      const terms = rawTokens.filter(t => t.type === "TERM").map(t => t.value);
+      return {
+        fn: (haystack) => !terms.length || terms.some(term => haystack.includes(term)),
+        fallback: true,
+        message: "Incomplete boolean expression — showing partial term matches while you type."
+      };
+    }
+
+    return { fn: predicate, fallback: false, message: "" };
+  }
+
+  function getFilteredAndSorted() {
+    const { fn, fallback, message } = compilePredicate(searchInput.value);
+    feedbackEl.textContent = message;
+    feedbackEl.classList.toggle("fallback", fallback);
+
+    const filtered = MOCK_SENSORS.filter(row => fn(rowHaystack(row)));
+
+    filtered.sort((a, b) => {
+      const valA = a[sortCol].toLowerCase();
+      const valB = b[sortCol].toLowerCase();
+      if (valA < valB) return sortAsc ? -1 : 1;
+      if (valA > valB) return sortAsc ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }
+
+  function renderTableBadge(tableName) {
+    const cls = tableName === "Table_AN" ? "tag-an" : "tag-di";
+    return `<span class="table-tag ${cls}">${tableName}</span>`;
+  }
+
+  function render() {
+    renderChips();
+    const rows = getFilteredAndSorted();
+    countBadge.textContent = `${rows.length} of ${MOCK_SENSORS.length} sensors`;
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No sensors match your search expression.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(row => `
+      <tr>
+        <td class="num">${row.number}</td>
+        <td><strong>${row.title}</strong></td>
+        <td>${renderTableBadge(row.table)}</td>
+        <td>${row.system}</td>
+      </tr>
+    `).join("");
+  }
+
+  searchInput.addEventListener("input", render);
+
+  clearBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    render();
+    searchInput.focus();
+  });
+
+  document.querySelectorAll("th[data-col]").forEach(th => {
+    th.addEventListener("click", () => {
+      const col = th.dataset.col;
+      if (sortCol === col) {
+        sortAsc = !sortAsc;
+      } else {
+        sortCol = col;
+        sortAsc = true;
+      }
+      render();
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
