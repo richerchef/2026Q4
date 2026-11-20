@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telemetry Data Quality & Coverage</title>
+  <style>
+    :root {
+      --bg-page: #0f172a;
+      --bg-card: #1e293b;
+      --bg-input: #0f172a;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 20px;
+    }
+
+    .container { max-width: 1280px; margin: 0 auto; }
+
+    /* Header & Toolbar */
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .header h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
+    .header p { font-size: 0.85rem; color: var(--text-muted); }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    /* Tabs & Toggles */
+    .tab-group {
+      display: inline-flex;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+      gap: 4px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .tab-btn:hover { color: var(--text-main); }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .action-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 7px 12px;
+      border-radius: 6px;
+      font-size: 0.825rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: #64748b; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-danger { color: var(--rose); border-color: rgba(244, 63, 94, 0.3); }
+    .btn-danger:hover { background: rgba(244, 63, 94, 0.1); }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* URL Bar */
+    .url-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      overflow-x: auto;
+    }
+    .url-bar span { white-space: nowrap; flex: 1; }
+
+    /* Chart Container */
+    #plotly-chart { width: 100%; height: 520px; }
+
+    /* Summary Table */
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .table-header h2 { font-size: 1rem; font-weight: 600; }
+    .range-badge {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: var(--bg-input);
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    tr:last-child td { border-bottom: none; }
+    .num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; }
+
+    .status-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-good { background: rgba(16, 185, 129, 0.15); color: var(--emerald); }
+    .status-warn { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+    .status-bad  { background: rgba(244, 63, 94, 0.15); color: var(--rose); }
+
+    /* Bookmarks Drawer / Panel */
+    .bookmarks-panel { display: none; margin-bottom: 20px; }
+    .bookmarks-panel.open { display: block; }
+    .bookmark-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .bookmark-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+    .bookmark-meta { color: var(--text-muted); font-size: 0.78rem; margin-left: 8px; }
+  </style>
+
+  <!-- Offline Plotly 5.6.0 JS injected by Python -->
+  <script type="text/javascript">/* __PLOTLY_JS_PLACEHOLDER__ */</script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>Telemetry Data Quality & Coverage</h1>
+      <p>Standalone offline coverage inspector &bull; Generated <span id="build-timestamp"></span></p>
+    </div>
+    <div class="action-group">
+      <button class="btn" id="btn-save-query">+ Save Current View</button>
+      <button class="btn" id="btn-toggle-bookmarks">Saved Views (<span id="bookmark-count">0</span>)</button>
+    </div>
+  </div>
+
+  <!-- Saved Queries Panel -->
+  <div class="card bookmarks-panel" id="bookmarks-panel">
+    <div class="table-header">
+      <h2>Saved Queries (Local Browser Cache)</h2>
+      <button class="btn btn-danger" id="btn-clear-bookmarks">Clear All</button>
+    </div>
+    <div id="bookmark-list" class="bookmark-list"></div>
+  </div>
+
+  <!-- Controls: Sensor Tabs & Daily/Monthly Toggle -->
+  <div class="controls-row">
+    <div class="tab-group" id="sensor-tabs"></div>
+
+    <div class="action-group">
+      <div class="tab-group" id="granularity-toggle">
+        <button class="tab-btn active" data-gran="daily">Daily</button>
+        <button class="tab-btn" data-gran="monthly">Monthly</button>
+      </div>
+      <button class="btn" id="btn-reset-zoom">Reset Range</button>
+    </div>
+  </div>
+
+  <!-- Synced URL Bar -->
+  <div class="url-bar">
+    <strong>URL State:</strong>
+    <span id="url-display"></span>
+    <button class="btn" id="btn-copy-url" style="padding: 3px 8px; font-size: 0.75rem;">Copy URL</button>
+  </div>
+
+  <!-- Stacked Plotly Bar Chart -->
+  <div class="card">
+    <div id="plotly-chart"></div>
+  </div>
+
+  <!-- Dynamic Summary Table -->
+  <div class="card">
+    <div class="table-header">
+      <h2>Coverage Summary (Visible Range)</h2>
+      <span class="range-badge" id="active-range-label">All Dates</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Channel</th>
+          <th>Mean Coverage (%)</th>
+          <th>Min (%)</th>
+          <th>Max (%)</th>
+          <th>Periods Included</th>
+          <th>Quality Status</th>
+        </tr>
+      </thead>
+      <tbody id="summary-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Sensor Coverage Data injected by Python -->
+<script type="text/javascript">
+  const APP_DATA = /* __SENSOR_DATA_PLACEHOLDER__ */ {};
+</script>
+
+<script type="text/javascript">
+(function() {
+  const STORAGE_KEY = "dq_dashboard_saved_queries_v1";
+  const sensorKeys = Object.keys(APP_DATA.sensors || {});
+
+  let state = {
+    sensor: sensorKeys[0] || "",
+    granularity: "daily", // "daily" | "monthly"
+    start: null,
+    end: null
+  };
+
+  document.getElementById("build-timestamp").textContent = APP_DATA.generated_at || "Local Build";
+
+  // --- 1. Parse URL Parameters on Load ---
+  function loadFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get("sensor");
+    const g = params.get("granularity");
+    const start = params.get("start");
+    const end = params.get("end");
+
+    if (s && APP_DATA.sensors[s]) state.sensor = s;
+    if (g === "daily" || g === "monthly") state.granularity = g;
+    if (start) state.start = start;
+    if (end) state.end = end;
+  }
+
+  function syncUrl() {
+    const params = new URLSearchParams();
+    params.set("sensor", state.sensor);
+    params.set("granularity", state.granularity);
+    if (state.start) params.set("start", state.start);
+    if (state.end) params.set("end", state.end);
+
+    const newUrl = window.location.pathname + "?" + params.toString();
+    try {
+      window.history.replaceState({}, "", newUrl);
+    } catch (e) {
+      // Fallback for strict file:// security contexts
+    }
+    document.getElementById("url-display").textContent = window.location.href.split("?")[0] + "?" + params.toString();
+  }
+
+  // --- 2. Aggregate Daily vs Monthly ---
+  function getSeriesData(sensorKey, granularity) {
+    const raw = APP_DATA.sensors[sensorKey];
+    if (!raw) return { dates: [], an: [], di: [] };
+
+    if (granularity === "daily") {
+      return {
+        dates: raw.dates,
+        an: raw.an,
+        di: raw.di
+      };
+    }
+
+    // Group YYYY-MM-DD by YYYY-MM and compute mean
+    const buckets = {};
+    for (let i = 0; i < raw.dates.length; i++) {
+      const ym = raw.dates[i].slice(0, 7); // "YYYY-MM"
+      if (!buckets[ym]) buckets[ym] = { anSum: 0, anCount: 0, diSum: 0, diCount: 0 };
+      if (raw.an[i] !== null && raw.an[i] !== undefined) {
+        buckets[ym].anSum += raw.an[i];
+        buckets[ym].anCount += 1;
+      }
+      if (raw.di[i] !== null && raw.di[i] !== undefined) {
+        buckets[ym].diSum += raw.di[i];
+        buckets[ym].diCount += 1;
+      }
+    }
+
+    const months = Object.keys(buckets).sort();
+    const anMonthly = months.map(m => buckets[m].anCount ? +(buckets[m].anSum / buckets[m].anCount).toFixed(2) : 0);
+    const diMonthly = months.map(m => buckets[m].diCount ? +(buckets[m].diSum / buckets[m].diCount).toFixed(2) : 0);
+
+    return { dates: months, an: anMonthly, di: diMonthly };
+  }
+
+  // --- 3. Render Sensor Tabs ---
+  function renderSensorTabs() {
+    const container = document.getElementById("sensor-tabs");
+    container.innerHTML = "";
+    sensorKeys.forEach(key => {
+      const btn = document.createElement("button");
+      btn.className = "tab-btn" + (key === state.sensor ? " active" : "");
+      btn.textContent = APP_DATA.sensors[key].label || key;
+      btn.onclick = () => {
+        state.sensor = key;
+        renderSensorTabs();
+        renderChart();
+      };
+      container.appendChild(btn);
+    });
+  }
+
+  // --- 4. Render Stacked Plotly Chart ---
+  function renderChart() {
+    const series = getSeriesData(state.sensor, state.granularity);
+    if (!series.dates.length) return;
+
+    // Default range if unset
+    if (!state.start || !state.end) {
+      state.start = series.dates[0];
+      state.end = series.dates[series.dates.length - 1];
+    }
+
+    const traceAN = {
+      x: series.dates,
+      y: series.an,
+      name: "Analogue (Table_AN)",
+      type: "bar",
+      marker: { color: "#3b82f6" },
+      xaxis: "x",
+      yaxis: "y",
+      hovertemplate: "%{x}<br>Analogue: <b>%{y:.1f}%</b><extra></extra>"
+    };
+
+    const traceDI = {
+      x: series.dates,
+      y: series.di,
+      name: "Digital (Table_DI)",
+      type: "bar",
+      marker: { color: "#10b981" },
+      xaxis: "x",
+      yaxis: "y2",
+      hovertemplate: "%{x}<br>Digital: <b>%{y:.1f}%</b><extra></extra>"
+    };
+
+    const layout = {
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(15,23,42,0.5)",
+      font: { color: "#e2e8f0", size: 12 },
+      margin: { t: 24, r: 20, b: 30, l: 55 },
+      barmode: "group",
+      bargap: 0.15,
+      showlegend: true,
+      legend: { orientation: "h", y: 1.08, x: 0 },
+      grid: { rows: 2, columns: 1, subplots: [["xy"], ["xy2"]], roworder: "top to bottom" },
+      xaxis: {
+        type: "date",
+        range: [state.start, state.end],
+        gridcolor: "#334155",
+        rangeslider: {
+          visible: true,
+          bgcolor: "#0f172a",
+          bordercolor: "#334155",
+          thickness: 0.12
+        }
+      },
+      yaxis: {
+        title: "Analogue %",
+        range: [0, 105],
+        gridcolor: "#334155",
+        domain: [0.55, 1.0]
+      },
+      yaxis2: {
+        title: "Digital %",
+        range: [0, 105],
+        gridcolor: "#334155",
+        domain: [0.0, 0.45]
+      }
+    };
+
+    const config = {
+      responsive: true,
+      displaylogo: false,
+      modeBarButtonsToRemove: ["lasso2d", "select2d"]
+    };
+
+    const chartDiv = document.getElementById("plotly-chart");
+    Plotly.newPlot(chartDiv, [traceAN, traceDI], layout, config);
+
+    // Attach zoom/pan/slider listener
+    chartDiv.on("plotly_relayout", function(eventData) {
+      let newStart = null;
+      let newEnd = null;
+
+      if (eventData["xaxis.range[0]"] && eventData["xaxis.range[1]"]) {
+        newStart = String(eventData["xaxis.range[0]"]).slice(0, 10);
+        newEnd = String(eventData["xaxis.range[1]"]).slice(0, 10);
+      } else if (Array.isArray(eventData["xaxis.range"])) {
+        newStart = String(eventData["xaxis.range"][0]).slice(0, 10);
+        newEnd = String(eventData["xaxis.range"][1]).slice(0, 10);
+      } else if (eventData["xaxis.autorange"]) {
+        newStart = series.dates[0];
+        newEnd = series.dates[series.dates.length - 1];
+      }
+
+      if (newStart && newEnd) {
+        state.start = newStart;
+        state.end = newEnd;
+        updateSummaryTable(series);
+        syncUrl();
+      }
+    });
+
+    updateSummaryTable(series);
+    syncUrl();
+  }
+
+  // --- 5. Calculate Mean / Min / Max for Visible Window ---
+  function updateSummaryTable(series) {
+    const startNorm = state.granularity === "monthly" ? state.start.slice(0, 7) : state.start;
+    const endNorm   = state.granularity === "monthly" ? state.end.slice(0, 7) : state.end;
+
+    const anVals = [];
+    const diVals = [];
+
+    for (let i = 0; i < series.dates.length; i++) {
+      const d = series.dates[i];
+      if (d >= startNorm && d <= endNorm) {
+        if (typeof series.an[i] === "number") anVals.push(series.an[i]);
+        if (typeof series.di[i] === "number") diVals.push(series.di[i]);
+      }
+    }
+
+    document.getElementById("active-range-label").textContent = `${startNorm} → ${endNorm}`;
+
+    const calcStats = (arr) => {
+      if (!arr.length) return { mean: 0, min: 0, max: 0, count: 0 };
+      const sum = arr.reduce((a, b) => a + b, 0);
+      return {
+        mean: sum / arr.length,
+        min: Math.min(...arr),
+        max: Math.max(...arr),
+        count: arr.length
+      };
+    };
+
+    const anStats = calcStats(anVals);
+    const diStats = calcStats(diVals);
+    const combinedVals = [...anVals, ...diVals];
+    const combStats = calcStats(combinedVals);
+
+    const getBadge = (mean) => {
+      if (mean >= 85) return `<span class="status-pill status-good">Ready (&ge;85%)</span>`;
+      if (mean >= 50) return `<span class="status-pill status-warn">Partial (50-84%)</span>`;
+      return `<span class="status-pill status-bad">Low (&lt;50%)</span>`;
+    };
+
+    const rows = [
+      { label: "Analogue (Table_AN)", stats: anStats },
+      { label: "Digital (Table_DI)", stats: diStats },
+      { label: "Combined Average", stats: combStats }
+    ];
+
+    const tbody = document.getElementById("summary-tbody");
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td><strong>${r.label}</strong></td>
+        <td class="num">${r.stats.mean.toFixed(2)}%</td>
+        <td class="num">${r.stats.min.toFixed(2)}%</td>
+        <td class="num">${r.stats.max.toFixed(2)}%</td>
+        <td class="num">${r.stats.count} ${state.granularity === "monthly" ? "months" : "days"}</td>
+        <td>${getBadge(r.stats.mean)}</td>
+      </tr>
+    `).join("");
+  }
+
+  // --- 6. Granularity Toggle & Reset ---
+  document.querySelectorAll("#granularity-toggle .tab-btn").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll("#granularity-toggle .tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.granularity = btn.dataset.gran;
+      renderChart();
+    };
+  });
+
+  document.getElementById("btn-reset-zoom").onclick = () => {
+    const series = getSeriesData(state.sensor, state.granularity);
+    if (series.dates.length) {
+      state.start = series.dates[0];
+      state.end = series.dates[series.dates.length - 1];
+      renderChart();
+    }
+  };
+
+  document.getElementById("btn-copy-url").onclick = () => {
+    const urlText = document.getElementById("url-display").textContent;
+    navigator.clipboard.writeText(urlText).then(() => {
+      const btn = document.getElementById("btn-copy-url");
+      btn.textContent = "Copied!";
+      setTimeout(() => btn.textContent = "Copy URL", 1500);
+    });
+  };
+
+  // --- 7. LocalStorage Saved Queries ---
+  function getBookmarks() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch (e) { return []; }
+  }
+
+  function saveBookmarks(list) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    renderBookmarks();
+  }
+
+  function renderBookmarks() {
+    const list = getBookmarks();
+    document.getElementById("bookmark-count").textContent = list.length;
+    const container = document.getElementById("bookmark-list");
+
+    if (!list.length) {
+      container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem;">No saved views yet. Click "+ Save Current View" to bookmark a sensor and date range.</p>`;
+      return;
+    }
+
+    container.innerHTML = list.map((item, idx) => `
+      <div class="bookmark-item">
+        <div>
+          <strong>${item.name}</strong>
+          <span class="bookmark-meta">[${item.sensor} &bull; ${item.granularity} &bull; ${item.start} to ${item.end}]</span>
+        </div>
+        <div class="action-group">
+          <button class="btn btn-primary" onclick="window.__applyBookmark(${idx})">Apply</button>
+          <button class="btn btn-danger" onclick="window.__deleteBookmark(${idx})">Remove</button>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  window.__applyBookmark = (idx) => {
+    const item = getBookmarks()[idx];
+    if (!item) return;
+    if (APP_DATA.sensors[item.sensor]) state.sensor = item.sensor;
+    state.granularity = item.granularity || "daily";
+    state.start = item.start;
+    state.end = item.end;
+
+    document.querySelectorAll("#granularity-toggle .tab-btn").forEach(b => {
+      b.classList.toggle("active", b.dataset.gran === state.granularity);
+    });
+
+    renderSensorTabs();
+    renderChart();
+  };
+
+  window.__deleteBookmark = (idx) => {
+    const list = getBookmarks();
+    list.splice(idx, 1);
+    saveBookmarks(list);
+  };
+
+  document.getElementById("btn-save-query").onclick = () => {
+    const defaultName = `${state.sensor} (${state.start} to ${state.end})`;
+    const name = prompt("Enter a name for this saved view:", defaultName);
+    if (!name) return;
+    const list = getBookmarks();
+    list.unshift({
+      name: name.trim(),
+      sensor: state.sensor,
+      granularity: state.granularity,
+      start: state.start,
+      end: state.end
+    });
+    saveBookmarks(list);
+    document.getElementById("bookmarks-panel").classList.add("open");
+  };
+
+  document.getElementById("btn-toggle-bookmarks").onclick = () => {
+    document.getElementById("bookmarks-panel").classList.toggle("open");
+  };
+
+  document.getElementById("btn-clear-bookmarks").onclick = () => {
+    if (confirm("Remove all saved views from local cache?")) {
+      saveBookmarks([]);
+    }
+  };
+
+  // --- Boot ---
+  loadFromUrl();
+  // Sync granularity button state if loaded from URL
+  document.querySelectorAll("#granularity-toggle .tab-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.gran === state.granularity);
+  });
+  renderSensorTabs();
+  renderBookmarks();
+  renderChart();
+})();
+</script>
+</body>
+</html>
